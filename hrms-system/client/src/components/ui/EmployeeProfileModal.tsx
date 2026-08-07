@@ -422,7 +422,7 @@ export default function EmployeeProfileModal({ employee, onClose, onUpdated }: E
                       <span>Onboarded Documents & Verification Links</span>
                     </h4>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      {currentEmp.photoUrl && (
+                      {fileUrl(currentEmp.photoUrl) && (
                         <a
                           href={fileUrl(currentEmp.photoUrl)!}
                           target="_blank"
@@ -433,19 +433,30 @@ export default function EmployeeProfileModal({ employee, onClose, onUpdated }: E
                           <ExternalLink className="w-4 h-4 text-[#C9952A] group-hover:text-white" />
                         </a>
                       )}
-                      {currentEmp.resumeUrl && (
+                      {fileUrl(currentEmp.aadhaarUrl || currentEmp.aadharUrl || currentEmp.aadhaar_url || currentEmp.aadhar_url) && (
+                        <a
+                          href={fileUrl(currentEmp.aadhaarUrl || currentEmp.aadharUrl || currentEmp.aadhaar_url || currentEmp.aadhar_url)!}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="p-3 rounded-xl border border-[#e2dfd7] bg-[#F9F7F4] hover:bg-[#1E2D4E] hover:text-white transition-all flex items-center justify-between font-bold group"
+                        >
+                          <span>📄 Aadhaar Card Document</span>
+                          <ExternalLink className="w-4 h-4 text-[#C9952A] group-hover:text-white" />
+                        </a>
+                      )}
+                      {fileUrl(currentEmp.resumeUrl) && (
                         <a
                           href={fileUrl(currentEmp.resumeUrl)!}
                           target="_blank"
                           rel="noopener noreferrer"
                           className="p-3 rounded-xl border border-[#e2dfd7] bg-[#F9F7F4] hover:bg-[#1E2D4E] hover:text-white transition-all flex items-center justify-between font-bold group"
                         >
-                          <span>📄 Employee Resume / CV</span>
+                          <span>📑 Employee Resume / CV</span>
                           <ExternalLink className="w-4 h-4 text-[#C9952A] group-hover:text-white" />
                         </a>
                       )}
                     </div>
-                    {!currentEmp.photoUrl && !currentEmp.resumeUrl && (
+                    {!currentEmp.photoUrl && !currentEmp.resumeUrl && !(currentEmp.aadhaarUrl || currentEmp.aadharUrl || currentEmp.aadhaar_url || currentEmp.aadhar_url) && (
                       <div className="p-8 text-center text-[#777777] font-semibold italic">
                         No uploaded document files found for this profile.
                       </div>
