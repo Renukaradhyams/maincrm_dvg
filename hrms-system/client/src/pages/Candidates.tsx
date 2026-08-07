@@ -42,7 +42,7 @@ export default function CandidatesPage() {
   const [directOfferModal, setDirectOfferModal] = useState<{ open: boolean; candidate: any | null }>({ open: false, candidate: null });
   const [confirmStatusModal, setConfirmStatusModal] = useState<{ open: boolean; candidate: any | null; newStatus: string }>({ open: false, candidate: null, newStatus: '' });
   const [highlightAppNo, setHighlightAppNo] = useState<string | null>(null);
-  const [offerForm, setOfferForm] = useState({ salary: "", incentive: "", doj: "", desig: "", department: "", remarks: "" });
+  const [offerForm, setOfferForm] = useState({ salary: "", incentive: "", doj: "", desig: "", department: "", section: "", remarks: "" });
   const [designations, setDesignations] = useState<string[]>([]);
   
   const [callModal, setCallModal] = useState<{ open: boolean; candidate: any | null; step: number; callStatus: any }>({ open: false, candidate: null, step: 1, callStatus: null });
@@ -219,7 +219,7 @@ export default function CandidatesPage() {
     // 'Offer Sent' opens the Direct Offer modal to collect salary/DOJ details
     if (targetStatus === 'Offer Sent') {
       setDirectOfferModal({ open: true, candidate });
-      setOfferForm({ salary: "", incentive: "", doj: "", desig: candidate.desig || "", department: candidate.department || "", remarks: "" });
+      setOfferForm({ salary: "", incentive: "", doj: "", desig: candidate.desig || "", department: candidate.department || "", section: candidate.section || "", remarks: "" });
       return;
     }
 
