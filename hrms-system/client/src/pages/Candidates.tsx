@@ -13,6 +13,7 @@ import {
   Users, Search, Filter, Phone, Mail, Calendar, MapPin, Briefcase, 
   FileText, CheckCircle, XCircle, Plus, Clock, ExternalLink, MessageSquare, ChevronRight, X, Trash2, Edit3, ShieldAlert, FileCheck, Image as ImageIcon, UserCheck, DollarSign, TrendingUp
 } from 'lucide-react';
+import ShortlistModal from '../components/ui/ShortlistModal';
 
 export default function CandidatesPage() {
   const navigate = useNavigate();
@@ -26,6 +27,7 @@ export default function CandidatesPage() {
   const [desigFilter, setDesigFilter] = useState('');
   const [sourceFilter, setSourceFilter] = useState('');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+  const [shortlistModal, setShortlistModal] = useState<{ open: boolean; candidate: any | null }>({ open: false, candidate: null });
 
   // Drawer
   const [drawerCandidate, setDrawerCandidate] = useState<any | null>(null);
@@ -264,8 +266,7 @@ export default function CandidatesPage() {
     if (!candidate || actionLoading) return;
     
     if (action === 'shortlist') {
-      setDirectOfferModal({ open: true, candidate });
-      setOfferForm({ salary: "", incentive: "", doj: "", desig: candidate.desig || "", department: candidate.department || "", remarks: "" });
+      setShortlistModal({ open: true, candidate });
       return;
     }
     
@@ -1207,6 +1208,14 @@ export default function CandidatesPage() {
           </div>
         </div>
       )}
+
+      {/* Candidate Shortlisting & Screening Questions Modal */}
+      <ShortlistModal
+        candidate={shortlistModal.candidate}
+        isOpen={shortlistModal.open}
+        onClose={() => setShortlistModal({ open: false, candidate: null })}
+        onShortlistConfirmed={loadCandidates}
+      />
     </div>
   );
 }

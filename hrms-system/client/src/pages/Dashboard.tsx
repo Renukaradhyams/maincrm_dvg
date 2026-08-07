@@ -34,6 +34,7 @@ import {
   PhoneCall,
   QrCode
 } from 'lucide-react';
+import EmployeeProfileModal from '../components/ui/EmployeeProfileModal';
 
 export default function DashboardPage() {
   const navigate = useNavigate();
