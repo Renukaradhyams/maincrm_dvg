@@ -52,7 +52,10 @@ export default function App() {
         <Route path="/interview-panel" element={<Navigate to="/candidates" replace />} />
         <Route path="/interview-form" element={<Navigate to="/candidates" replace />} />
         <Route path="/offer-process" element={<OfferProcess />} />
-        <Route path="/onboarding" element={<Onboarding />} />
+        {/* Disabled pages per user request: Onboarding, Exit & FnF, Interview Panel */}
+        <Route path="/onboarding" element={<Navigate to="/employees" replace />} />
+        <Route path="/employee-exit" element={<Navigate to="/employees" replace />} />
+        <Route path="/exit" element={<Navigate to="/employees" replace />} />
         <Route path="/employees" element={<Employees />} />
         <Route path="/department-hiring" element={<DepartmentHiring />} />
         <Route path="/section-allocation" element={<SectionAllocation />} />
