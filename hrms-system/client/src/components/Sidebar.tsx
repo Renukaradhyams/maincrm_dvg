@@ -87,7 +87,7 @@ export default function Sidebar({ session, isOpen, onClose }: SidebarProps) {
     { key: 'feedback_qr', href: '/feedback-qr', label: 'Feedback QR Code', icon: ClipboardList, section: 'Store Operations' },
     { key: 'divert', href: '/divert', label: 'Sourcing Diverts', icon: Target, section: 'Store Operations' },
     { key: 'pm_view', href: '/pm-view', label: 'Purchase Manager View', icon: Briefcase, section: 'Store Operations' },
-    { key: 'cash', href: '/cash-settlement', label: 'Cash Settlement', icon: FileText, section: 'Store Operations' },
+    // { key: 'cash', href: '/cash-settlement', label: 'Cash Settlement', icon: FileText, section: 'Store Operations' },
     { key: 'vm_checklist', href: '/vm-checklist', label: 'VM Checklist', icon: ClipboardList, section: 'Store Operations' },
     { key: 'attendance', href: '/attendance', label: 'Attendance & Roster', icon: UserCheck, section: 'Store Operations' },
     { key: 'candidates', href: '/candidates', label: 'Candidate CRM', icon: Users, section: 'Core Workspace' },
