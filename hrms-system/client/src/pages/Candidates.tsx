@@ -217,15 +217,32 @@ export default function CandidatesPage() {
   const handleStatusSelect = (candidate: any, targetStatus: string) => {
     if (!candidate || candidate.status === targetStatus) return;
 
-    // 'Offer Sent' opens the Direct Offer modal to collect salary/DOJ details
-    if (targetStatus === 'Offer Sent') {
+    // Shortlisted -> open shortlisting card to collect salary/DOJ/dept details
+    if (targetStatus === 'Shortlisted') {
       setDirectOfferModal({ open: true, candidate });
-      setOfferForm({ salary: "", incentive: "", doj: "", desig: candidate.desig || "", department: candidate.department || "", section: candidate.section || "", remarks: "" });
+      setOfferForm({
+        salary: candidate.expectedSalary || candidate.previousSalary || candidate.salary || '',
+        incentive: '',
+        doj: candidate.offeredDoj || candidate.estDoj || '',
+        desig: candidate.desig || candidate.designation || '',
+        department: candidate.department || 'Mens',
+        section: candidate.section || '',
+        remarks: candidate.remarks || ''
+      });
       return;
     }
 
-    // All other status changes go through confirmation modal
-    setConfirmStatusModal({ open: true, candidate, newStatus: targetStatus });
+    // Rejected goes through API directly
+    if (targetStatus === 'Rejected') {
+      setConfirmStatusModal({ open: true, candidate, newStatus: 'Rejected' });
+      return;
+    }
+
+    // Hold goes through confirmation modal
+    if (targetStatus === 'Hold') {
+      setConfirmStatusModal({ open: true, candidate, newStatus: 'Hold' });
+      return;
+    }
   };
 
   const executeStatusChange = async () => {
@@ -331,6 +348,8 @@ export default function CandidatesPage() {
         ? `${offerForm.salary.trim()}|${offerForm.incentive.trim()}`
         : offerForm.salary.trim();
 
+      // Single API call — offerController.createDirectOffer now handles setting
+      // status = 'Shortlisted' in both candidates and selection_offers tables
       await API.createDirectOffer({
         appNo: directOfferModal.candidate.appNo,
         salaryOffered: combinedSalary,
@@ -338,15 +357,6 @@ export default function CandidatesPage() {
         designation: offerForm.desig,
         department: offerForm.department,
         section: offerForm.section || null,
-        remarks: offerForm.remarks
-      });
-
-      await API.updateCandidate(directOfferModal.candidate.appNo, {
-        status: 'Shortlisted',
-        department: offerForm.department,
-        section: offerForm.section || null,
-        desig: offerForm.desig,
-        salary: combinedSalary,
         remarks: offerForm.remarks
       });
 
@@ -629,28 +639,32 @@ export default function CandidatesPage() {
                         <td className="py-3.5 px-4 text-[#555555] font-medium">{c.source}</td>
                         <td className="py-3.5 px-4 text-[#666666] whitespace-nowrap font-medium">{c.date}</td>
                         <td className="py-3.5 px-4" onClick={(e) => e.stopPropagation()}>
-                          <select
-                            value={c.status || 'New'}
-                            onChange={(e) => handleStatusSelect(c, e.target.value)}
-                            className={`text-[11px] font-extrabold rounded-xl border-2 px-2.5 py-1.5 cursor-pointer outline-none transition-all shadow-xs ${
-                              c.status === 'New' ? 'bg-slate-100 text-slate-800 border-slate-300' :
+                          {/* Only valid CRM statuses are shown — Shortlisted opens the shortlisting form */}
+                          {c.status === 'Shortlisted' || c.status === 'Joined' || c.status === 'Offer Rejected' ? (
+                            <span className={`inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-[11px] font-extrabold border-2 ${
                               c.status === 'Shortlisted' ? 'bg-blue-50 text-blue-800 border-blue-300' :
-                              c.status === 'Selected' || c.status === 'Already Selected' ? 'bg-emerald-50 text-emerald-800 border-emerald-300' :
-                              c.status === 'Offer Sent' || c.status === 'Offer Issued' ? 'bg-amber-50 text-amber-800 border-amber-300' :
-                              c.status === 'Joined' ? 'bg-teal-50 text-teal-800 border-teal-300 font-black' :
-                              c.status === 'Hold' ? 'bg-orange-50 text-orange-800 border-orange-300' :
-                              c.status === 'Rejected' || c.status === 'Offer Rejected' ? 'bg-rose-50 text-rose-800 border-rose-300' :
-                              'bg-slate-100 text-slate-800 border-slate-300'
-                            }`}
-                          >
-                            <option value="New">🔵 New</option>
-                            <option value="Shortlisted">📋 Shortlisted (Move to Offer Desk)</option>
-                            <option value="Selected">✅ Selected</option>
-                            <option value="Offer Sent">📄 Offer Sent</option>
-                            <option value="Joined">🎉 Joined (Move to Employees)</option>
-                            <option value="Hold">⏸ On Hold</option>
-                            <option value="Rejected">❌ Rejected</option>
-                          </select>
+                              c.status === 'Joined' ? 'bg-teal-50 text-teal-800 border-teal-300' :
+                              'bg-rose-50 text-rose-800 border-rose-300'
+                            }`}>
+                              {c.status === 'Shortlisted' ? '📋 Shortlisted' : c.status === 'Joined' ? '🎉 Joined' : '❌ Offer Rejected'}
+                            </span>
+                          ) : (
+                            <select
+                              value={c.status || 'New'}
+                              onChange={(e) => handleStatusSelect(c, e.target.value)}
+                              className={`text-[11px] font-extrabold rounded-xl border-2 px-2.5 py-1.5 cursor-pointer outline-none transition-all shadow-xs ${
+                                c.status === 'New' ? 'bg-slate-100 text-slate-800 border-slate-300' :
+                                c.status === 'Hold' ? 'bg-orange-50 text-orange-800 border-orange-300' :
+                                c.status === 'Rejected' ? 'bg-rose-50 text-rose-800 border-rose-300' :
+                                'bg-slate-100 text-slate-800 border-slate-300'
+                              }`}
+                            >
+                              <option value="New">🔵 New Applicant</option>
+                              <option value="Shortlisted">📋 Shortlist → Offer Desk</option>
+                              <option value="Hold">⏸ On Hold</option>
+                              <option value="Rejected">❌ Rejected</option>
+                            </select>
+                          )}
                         </td>
                         <td className="py-3.5 px-4 text-right">
                           <div className="flex items-center justify-end gap-1.5">

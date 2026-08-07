@@ -45,8 +45,12 @@ export default function OfferProcessPage() {
   const [department, setDepartment] = useState('');
   const [otherSection, setOtherSection] = useState('');
   const [offerRemarks, setOfferRemarks] = useState('');
-  const [offerStatus, setOfferStatus] = useState('Pending Accept');
+  const [offerStatus, setOfferStatus] = useState('Shortlisted');
   const [joiningDate, setJoiningDate] = useState(new Date().toISOString().slice(0, 10));
+
+  // Join Confirmation Modal State
+  const [joinConfirmModal, setJoinConfirmModal] = useState<{ open: boolean; offer: any | null }>({ open: false, offer: null });
+  const [joinDate, setJoinDate] = useState(new Date().toISOString().slice(0, 10));
 
   // Profile Modal State
   const [profileOffer, setProfileOffer] = useState<any | null>(null);
@@ -217,16 +221,22 @@ export default function OfferProcessPage() {
     }
   };
 
-  const handleAcceptOffer = async (appNo: string) => {
-    if (saving) return;
+  const handleAcceptOffer = (o: any) => {
+    // Open confirmation dialog instead of immediately joining
+    setJoinDate(new Date().toISOString().slice(0, 10));
+    setJoinConfirmModal({ open: true, offer: o });
+  };
+
+  const handleConfirmJoining = async () => {
+    const o = joinConfirmModal.offer;
+    if (!o || saving) return;
     setSaving(true);
     try {
-      const now = new Date();
-      const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-      await API.markJoined({ appNo, joiningDate: todayStr });
-      showToast('Offer accepted & automatically marked as Joined! 🎉 Moving to directory...', 'success');
-      setProfileOffer(null);
-      setTimeout(() => { navigate('/employees'); }, 1500);
+      await API.markJoined({ appNo: o.appNo, joiningDate: joinDate });
+      showToast(`${o.name} marked as Joined! 🎉 Employee Directory updated.`, 'success');
+      setJoinConfirmModal({ open: false, offer: null });
+      // Stay on Offer Desk, reload to show Joined status
+      loadOffers();
     } catch (e: any) {
       showToast('Error: ' + e.message, 'error');
     } finally {
@@ -234,15 +244,14 @@ export default function OfferProcessPage() {
     }
   };
 
-  const handleRejectOffer = async (appNo: string) => {
+  const handleRejectOffer = async (appNo: string, candidateName?: string) => {
     if (saving) return;
-    const remarks = window.prompt('Reason for rejection (optional):') ?? '';
+    const remarks = window.prompt(`Reason for rejecting ${candidateName || 'this candidate'}'s offer (optional):`) ?? '';
     if (remarks === null) return;
     setSaving(true);
     try {
       await API.rejectOffer({ appNo, remarks });
       showToast('Offer marked as Rejected', 'error');
-      setProfileOffer(prev => prev ? { ...prev, status: 'Offer Rejected' } : null);
       loadOffers();
     } catch (e: any) {
       showToast('Error: ' + e.message, 'error');
@@ -255,12 +264,10 @@ export default function OfferProcessPage() {
     if (saving) return;
     setSaving(true);
     try {
-      const now = new Date();
-      const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+      const todayStr = new Date().toISOString().slice(0, 10);
       await API.markJoined({ appNo, joiningDate: todayStr });
-      showToast('Candidate marked as Joined! 🎉 Moving to Employee directory...', 'success');
-      setProfileOffer(null);
-      setTimeout(() => { navigate('/employees'); }, 1500);
+      showToast('Candidate marked as Joined! 🎉 Employee Directory updated.', 'success');
+      loadOffers();
     } catch (e: any) {
       showToast('Error: ' + e.message, 'error');
     } finally {
@@ -274,7 +281,6 @@ export default function OfferProcessPage() {
     try {
       await API.updateOfferStatus({ appNo, status });
       showToast(`Offer status updated to ${status}`, 'success');
-      setProfileOffer(prev => prev ? { ...prev, status } : null);
       loadOffers();
     } catch (e: any) {
       showToast('Error: ' + e.message, 'error');
@@ -316,7 +322,76 @@ export default function OfferProcessPage() {
     <div className="min-h-screen bg-slate-50 flex">
       {/* Sidebar with mobile off-canvas & backdrop */}
       <Sidebar session={session} isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-      
+
+      {/* ── Join Confirmation Modal ─────────────────────────────── */}
+      {joinConfirmModal.open && joinConfirmModal.offer && (
+        <div className="fixed inset-0 z-[80] flex items-center justify-center p-4 bg-slate-900/60 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white rounded-3xl shadow-2xl w-full max-w-md border border-slate-200 overflow-hidden">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-teal-600 to-emerald-600 px-6 py-5 text-white">
+              <div className="flex items-center gap-3">
+                <div className="w-11 h-11 rounded-2xl bg-white/20 flex items-center justify-center font-black text-lg">
+                  {joinConfirmModal.offer.initials}
+                </div>
+                <div>
+                  <div className="text-xs font-bold text-teal-100 uppercase tracking-wider">Confirm Joining</div>
+                  <div className="font-extrabold text-lg">{joinConfirmModal.offer.name}</div>
+                </div>
+              </div>
+            </div>
+
+            {/* Details */}
+            <div className="px-6 py-5 space-y-3">
+              <p className="text-sm font-bold text-slate-700">Are you sure you want to confirm joining for this candidate?</p>
+              <div className="bg-slate-50 rounded-2xl border border-slate-200 p-4 space-y-2.5 text-xs font-semibold">
+                {[
+                  { label: 'Designation', value: joinConfirmModal.offer.desig || '—' },
+                  { label: 'Department', value: joinConfirmModal.offer.department || '—' },
+                  { label: 'Section', value: joinConfirmModal.offer.section || 'Not Assigned' },
+                  { label: 'Offered Salary', value: joinConfirmModal.offer.salary ? `₹ ${joinConfirmModal.offer.salary}` : '—' },
+                  { label: 'Est. Joining Date', value: joinConfirmModal.offer.estDoj || '—' },
+                  { label: 'Remarks', value: joinConfirmModal.offer.remarks || '—' },
+                ].map((row, i) => (
+                  <div key={i} className="flex justify-between">
+                    <span className="text-slate-500 uppercase text-[10px] font-black tracking-wider">{row.label}</span>
+                    <span className="text-slate-800 font-extrabold text-right max-w-[60%]">{row.value}</span>
+                  </div>
+                ))}
+              </div>
+
+              {/* Actual Joining Date */}
+              <div>
+                <label className="block text-[10px] font-black text-slate-600 uppercase tracking-wider mb-1">Actual Joining Date</label>
+                <input
+                  type="date"
+                  value={joinDate}
+                  onChange={e => setJoinDate(e.target.value)}
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 text-sm font-bold text-slate-800 outline-none focus:ring-2 focus:ring-teal-500/30 focus:border-teal-500"
+                />
+              </div>
+            </div>
+
+            {/* Actions */}
+            <div className="px-6 pb-5 flex items-center justify-end gap-2.5">
+              <button
+                onClick={() => setJoinConfirmModal({ open: false, offer: null })}
+                className="px-4 py-2.5 rounded-xl border border-slate-200 text-xs font-extrabold text-slate-700 hover:bg-slate-50 transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleConfirmJoining}
+                disabled={saving}
+                className="px-5 py-2.5 rounded-xl bg-teal-600 hover:bg-teal-700 text-white text-xs font-black shadow-md transition-colors disabled:opacity-50 flex items-center gap-1.5"
+              >
+                {saving ? '⏳ Processing...' : '✅ Confirm Joining'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+
       {/* Main Content Area (lg:pl-64 prevents sidebar overlap) */}
       <div className="flex-1 lg:pl-64 flex flex-col min-w-0 transition-all duration-300">
         <Topbar 
@@ -538,37 +613,45 @@ export default function OfferProcessPage() {
                               {o.noticePd && <div className="text-[10px] text-slate-400 font-medium">NP: {o.noticePd}</div>}
                             </td>
                             <td className="py-3.5 px-4" onClick={(e) => e.stopPropagation()}>
-                              <select
-                                value={o.status || 'Pending Accept'}
-                                onChange={(e) => handleUpdateOfferStatus(o.appNo, e.target.value)}
-                                className={`text-[11px] font-extrabold rounded-xl border-2 px-2.5 py-1.5 cursor-pointer outline-none transition-all shadow-xs ${
-                                  o.status === 'Accepted' ? 'bg-emerald-50 text-emerald-800 border-emerald-300' :
-                                  o.status === 'Joined' ? 'bg-teal-50 text-teal-800 border-teal-300 font-black' :
-                                  o.status === 'Declined' || o.status === 'Offer Rejected' ? 'bg-rose-50 text-rose-800 border-rose-300' :
-                                  'bg-blue-50 text-blue-800 border-blue-300'
-                                }`}
-                              >
-                                <option value="Pending Accept">⏳ Pending Accept</option>
-                                <option value="Accepted">✅ Accepted</option>
-                                <option value="Joined">🎉 Joined (Move to Employees)</option>
-                                <option value="Declined">❌ Offer Rejected</option>
-                              </select>
+                              {o.status === 'Joined' ? (
+                                <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-[11px] font-black bg-teal-50 text-teal-700 border border-teal-300">
+                                  🎉 Joined
+                                </span>
+                              ) : o.status === 'Declined' || o.status === 'Offer Rejected' ? (
+                                <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-[11px] font-black bg-rose-50 text-rose-700 border border-rose-300">
+                                  ❌ Offer Rejected
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-[11px] font-black bg-blue-50 text-blue-700 border border-blue-300">
+                                  ⏳ {o.status || 'Shortlisted'}
+                                </span>
+                              )}
                             </td>
                             <td className="py-3.5 px-4 text-right" onClick={(e) => e.stopPropagation()}>
                               <div className="flex items-center justify-end gap-2">
-                                <button 
-                                  onClick={() => openDetailModal(o)}
-                                  className="px-3 py-1.5 rounded-xl border border-slate-200 text-xs font-bold text-slate-700 bg-white hover:bg-slate-100 shadow-2xs transition-colors"
-                                >
-                                  Edit Details
-                                </button>
-                                {o.status === 'Pending Accept' && (
-                                  <button
-                                    onClick={() => handleAcceptOffer(o.appNo)}
-                                    className="px-3 py-1.5 rounded-xl bg-emerald-600 text-white text-xs font-bold shadow-2xs hover:bg-emerald-700 transition-colors"
-                                  >
-                                    Accept
-                                  </button>
+                                {o.status === 'Joined' ? (
+                                  <span className="px-3 py-1.5 rounded-xl border border-teal-200 bg-teal-50 text-teal-700 text-[11px] font-extrabold">
+                                    ✅ Already Joined
+                                  </span>
+                                ) : o.status === 'Declined' || o.status === 'Offer Rejected' ? (
+                                  <span className="px-3 py-1.5 rounded-xl border border-rose-200 bg-rose-50 text-rose-700 text-[11px] font-extrabold">
+                                    ❌ Rejected
+                                  </span>
+                                ) : (
+                                  <>
+                                    <button
+                                      onClick={() => handleAcceptOffer(o)}
+                                      className="px-3 py-1.5 rounded-xl bg-teal-600 text-white text-xs font-bold shadow-2xs hover:bg-teal-700 transition-colors"
+                                    >
+                                      ✅ Accept
+                                    </button>
+                                    <button
+                                      onClick={() => handleRejectOffer(o.appNo, o.name)}
+                                      className="px-3 py-1.5 rounded-xl border border-rose-200 text-rose-600 text-xs font-bold hover:bg-rose-50 transition-colors"
+                                    >
+                                      ❌ Reject
+                                    </button>
+                                  </>
                                 )}
                               </div>
                             </td>

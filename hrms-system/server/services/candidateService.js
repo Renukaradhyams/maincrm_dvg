@@ -170,7 +170,8 @@ class CandidateService {
       const osLower = (r.offer_status || '').toLowerCase().trim();
       const csLower = (r.status || '').toLowerCase().trim();
 
-      let computedStatus = r.status || 'New';
+      // Preserve actual status from DB — never override Shortlisted, Joined, Offer Rejected etc.
+      const computedStatus = r.status || 'New';
 
       return {
         id: r.id,
@@ -221,7 +222,13 @@ class CandidateService {
         q2: r.q2 || '',
         q3: r.q3 || '',
         q4: r.q4 || '',
-        remarks: r.remarks || ''
+        remarks: r.remarks || '',
+        department: r.department || '',
+        section: r.section || '',
+        designation: r.designation || '',
+        branch: r.branch || '',
+        createdAt: r.created_at || null,
+        updatedAt: r.updated_at || null
       };
     });
 

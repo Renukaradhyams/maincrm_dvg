@@ -26,6 +26,7 @@ const getOffers = async (req, res) => {
         he.hr_score_json,
         he.assigned_score_json,
         c.salary,
+        c.section as cand_section,
         c.department as cand_department,
         c.status as cand_status
       FROM selection_offers so
@@ -49,12 +50,13 @@ const getOffers = async (req, res) => {
     const colors = ['navy', 'gold', 'green', 'red', 'purple', 'teal'];
 
     const offers = rows.map((r) => {
-      const initials = r.name.split(' ').slice(0, 2).map((w) => w[0] || '').join('').toUpperCase();
-      const colorIndex = (r.name.charCodeAt(0) + (r.name.charCodeAt(1) || 0)) % colors.length;
+      const initials = (r.name || 'XX').split(' ').slice(0, 2).map((w) => w[0] || '').join('').toUpperCase();
+      const colorIndex = ((r.name || 'X').charCodeAt(0) + ((r.name || 'X').charCodeAt(1) || 0)) % colors.length;
 
       const createdDate = new Date(r.created_at || Date.now());
+      // Preserve actual status — Joined if either table is Joined
       const isJoined = (r.status || '').toLowerCase().trim() === 'joined' || (r.cand_status || '').toLowerCase().trim() === 'joined';
-      const status = isJoined ? 'Joined' : (r.status || 'Pending Accept');
+      const status = isJoined ? 'Joined' : (r.status || 'Shortlisted');
       const joinedDateObj = r.actual_doj ? new Date(r.actual_doj) : (r.updated_at ? new Date(r.updated_at) : createdDate);
       const rawDate = isJoined
         ? (isNaN(joinedDateObj.getTime()) ? createdDate.getTime() : joinedDateObj.getTime())
@@ -78,6 +80,7 @@ const getOffers = async (req, res) => {
         status,
         salary: r.salary || '',
         remarks: r.remarks || '',
+        section: r.cand_section || r.section || '',
         department: r.cand_department || r.department || '',
         hrScore: r.hr_score_json ? JSON.parse(r.hr_score_json) : null,
         assignedScore: r.assigned_score_json ? JSON.parse(r.assigned_score_json) : null,
@@ -169,15 +172,17 @@ const updateOfferDetails = async (req, res) => {
 const acceptOffer = async (req, res) => {
   try {
     const { appNo, remarks, joiningDate } = req.body;
+    if (!appNo) return errorRes(res, 'Application number is required', [], 400);
 
     const now = new Date();
     const doj = joiningDate ? new Date(joiningDate) : now;
     const dojVal = isNaN(doj.getTime()) ? now : doj;
 
-    await db.query(`UPDATE selection_offers SET status = 'Accepted', actual_doj = ?, updated_at = ? WHERE app_no = ?`, [dojVal, now, appNo]);
-    await db.query(`UPDATE candidates SET status = 'Accepted', updated_at = ? WHERE app_no = ?`, [now, appNo]);
+    // Set both tables to Joined
+    await db.query(`UPDATE selection_offers SET status = 'Joined', actual_doj = ?, updated_at = ? WHERE app_no = ?`, [dojVal, now, appNo]);
+    await db.query(`UPDATE candidates SET status = 'Joined', offered_doj = ?, updated_at = ? WHERE app_no = ?`, [dojVal, now, appNo]);
 
-    await logAction(req.user ? req.user.username : 'HR', 'ACCEPT_OFFER', 'OFFER', { appNo, remarks, joiningDate: dojVal });
+    await logAction(req.user ? req.user.username : 'HR', 'ACCEPT_OFFER_JOINED', 'OFFER', { appNo, remarks, joiningDate: dojVal });
 
     return res.json({ success: true });
   } catch (err) {
@@ -235,16 +240,14 @@ const updateOfferStatus = async (req, res) => {
 
 const createDirectOffer = async (req, res) => {
   try {
-    const { appNo, salaryOffered, estDoj, designation, department, remarks } = req.body;
+    const { appNo, salaryOffered, estDoj, designation, department, section, remarks } = req.body;
     if (!salaryOffered) return errorRes(res, 'Offered salary is mandatory', [], 400);
 
     const now = new Date();
     const doj = estDoj ? new Date(estDoj) : null;
 
+    // If offer already exists, update it instead of erroring
     const [existing] = await db.query(`SELECT id FROM selection_offers WHERE app_no = ?`, [appNo]);
-    if (existing.length > 0) {
-      return errorRes(res, 'Offer already exists for this candidate', [], 400);
-    }
 
     const [candRows] = await db.query(`SELECT name, designation, department FROM candidates WHERE app_no = ?`, [appNo]);
     if (candRows.length === 0) return errorRes(res, 'Candidate not found', [], 404);
@@ -253,17 +256,27 @@ const createDirectOffer = async (req, res) => {
     const finalDesig = designation || c.designation;
     const finalDept = department || c.department;
 
+    if (existing.length > 0) {
+      // Update existing offer
+      await db.query(
+        `UPDATE selection_offers SET designation = ?, department = ?, est_doj = ?, status = 'Shortlisted', remarks = COALESCE(?, remarks), updated_at = ? WHERE app_no = ?`,
+        [finalDesig, finalDept, doj, remarks || null, now, appNo]
+      );
+    } else {
+      // Insert new offer
+      await db.query(
+        `INSERT INTO selection_offers (app_no, name, designation, department, notice_period, est_doj, status, created_at, updated_at, remarks) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        [appNo, c.name, finalDesig, finalDept, null, doj, 'Shortlisted', now, now, remarks || null]
+      );
+    }
+
+    // Update candidates table — status = Shortlisted (not Offer Sent)
     await db.query(
-      `INSERT INTO selection_offers (app_no, name, designation, department, notice_period, est_doj, status, created_at, updated_at, remarks) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-      [appNo, c.name, finalDesig, finalDept, null, doj, 'Pending Accept', now, now, remarks || null]
+      `UPDATE candidates SET status = 'Shortlisted', salary = ?, designation = ?, department = ?, section = COALESCE(?, section), offered_doj = ?, remarks = COALESCE(?, remarks), updated_at = ? WHERE app_no = ?`,
+      [salaryOffered, finalDesig, finalDept, section || null, doj, remarks || null, now, appNo]
     );
 
-    await db.query(
-      `UPDATE candidates SET status = 'Offer Sent', salary = ?, designation = ?, department = ?, offered_doj = ?, remarks = COALESCE(?, remarks), updated_at = ? WHERE app_no = ?`,
-      [salaryOffered, finalDesig, finalDept, doj, remarks || null, now, appNo]
-    );
-
-    await logAction(req.user ? req.user.username : 'HR', 'DIRECT_OFFER', 'OFFER', { appNo, salaryOffered, estDoj });
+    await logAction(req.user ? req.user.username : 'HR', 'SHORTLIST_OFFER', 'OFFER', { appNo, salaryOffered, estDoj, department, section });
 
     return res.json({ success: true });
   } catch (err) {
