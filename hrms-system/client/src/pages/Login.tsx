@@ -70,9 +70,6 @@ export default function LoginPage() {
           <div>
             <h3 className="text-xl font-black text-[#1E2D4E] tracking-tight">Welcome Back</h3>
             <p className="text-xs text-[#777777] font-medium mt-1">Sign in with your authorized system credentials</p>
-            <p className="text-[10.5px] text-[#C9952A] font-bold mt-1 bg-amber-50 p-2 rounded-lg border border-amber-200">
-              Testing Admin Login: <span className="font-mono text-gray-800">admin@bsctextiles.com</span> / <span className="font-mono text-gray-800">password123</span>
-            </p>
           </div>
 
           {errorMsg && (

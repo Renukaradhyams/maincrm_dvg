@@ -4,13 +4,13 @@ import Sidebar from '../components/Sidebar';
 import Topbar from '../components/Topbar';
 import ToastContainer, { showToast } from '../components/Toast';
 import { API, Auth, UserSession } from '../services/api';
-import { Settings, Users, Eye, HelpCircle, Tag, Plus, Trash2, Key, Shield, Check, X } from 'lucide-react';
+import { Settings, Users, Eye, EyeOff, HelpCircle, Tag, Plus, Trash2, Key, Shield, Check, X, Lock } from 'lucide-react';
 
 export default function SettingsPage() {
   const navigate = useNavigate();
   const [session, setSession] = useState<UserSession | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [activeTab, setActiveTab] = useState<'users' | 'visibility' | 'questions' | 'roles'>('users');
+  const [activeTab, setActiveTab] = useState<'users' | 'pins' | 'visibility' | 'questions' | 'roles'>('users');
 
   // Users
   const [users, setUsers] = useState<any[]>([]);
@@ -18,6 +18,15 @@ export default function SettingsPage() {
   const [newUname, setNewUname] = useState('');
   const [newPwd, setNewPwd] = useState('');
   const [newRole, setNewRole] = useState('HR');
+
+  // Store Operational PINs
+  const [greeterPin, setGreeterPin] = useState('1234');
+  const [tvPin, setTvPin] = useState('1234');
+  const [cashPin, setCashPin] = useState('1234');
+  const [showGreeterPin, setShowGreeterPin] = useState(false);
+  const [showTvPin, setShowTvPin] = useState(false);
+  const [showCashPin, setShowCashPin] = useState(false);
+  const [savingPins, setSavingPins] = useState(false);
 
   // Page Visibility
   const [pageSettings, setPageSettings] = useState<Record<string, boolean>>({});
@@ -35,17 +44,23 @@ export default function SettingsPage() {
 
   const loadAll = useCallback(async () => {
     try {
-      const [uData, pData, qData, dData] = await Promise.all([
+      const [uData, pData, qData, dData, crmData] = await Promise.all([
         API.getUsers(),
         API.getPageSettings(),
         API.call('getAllInterviewQuestions'),
-        API.getDesignations()
+        API.getDesignations(),
+        API.getCrmSettings()
       ]);
 
       if (uData && uData.users) setUsers(uData.users);
       if (pData) setPageSettings(pData);
       if (qData && qData.questions) setQuestions(qData.questions);
       if (dData && dData.designations) setDesignations(dData.designations);
+      if (crmData && crmData.settings) {
+        if (crmData.settings.greeterPin) setGreeterPin(crmData.settings.greeterPin);
+        if (crmData.settings.tvPin) setTvPin(crmData.settings.tvPin);
+        if (crmData.settings.cashPin) setCashPin(crmData.settings.cashPin);
+      }
     } catch (err: any) {
       showToast('Error loading settings', 'error');
     }
@@ -172,8 +187,22 @@ export default function SettingsPage() {
     }
   };
 
+  const handleSavePins = async () => {
+    setSavingPins(true);
+    try {
+      await API.updateCrmSettings({ greeterPin, tvPin, cashPin });
+      showToast('Store Operational PINs updated successfully!', 'success');
+      loadAll();
+    } catch (e: any) {
+      showToast('Error updating PINs: ' + e.message, 'error');
+    } finally {
+      setSavingPins(false);
+    }
+  };
+
   const tabs = [
     { key: 'users', label: 'User Accounts & Access', icon: Users },
+    { key: 'pins', label: 'Store Kiosk & Cash PINs', icon: Shield },
     { key: 'visibility', label: 'Page Visibility Matrix', icon: Eye },
     { key: 'questions', label: 'Interview Question Bank', icon: HelpCircle },
     { key: 'roles', label: 'Designations Master', icon: Tag }
@@ -332,6 +361,119 @@ export default function SettingsPage() {
                       ))}
                     </tbody>
                   </table>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* TAB: STORE PINS */}
+          {activeTab === 'pins' && (
+            <div className="space-y-6 animate-fade-in">
+              <div className="card-glass p-6 space-y-6">
+                <div>
+                  <h3 className="font-extrabold text-[#1E2D4E] text-base flex items-center gap-2">
+                    <Shield className="w-5 h-5 text-[#C9952A]" />
+                    <span>Store Operational PINs &amp; Access Controls</span>
+                  </h3>
+                  <p className="text-xs text-[#777777] font-medium mt-1">
+                    Manage security PIN codes for hardware kiosks, TV monitor display, entrance greeter clicker, and daily POS cash settlement desk.
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {/* Greeter PIN */}
+                  <div className="p-5 rounded-2xl bg-[#F9F7F4] border border-[#e2dfd7] space-y-4">
+                    <div>
+                      <div className="font-extrabold text-sm text-[#1E2D4E]">Entrance Greeter Kiosk PIN</div>
+                      <div className="text-[11px] text-[#777777] font-medium mt-0.5">Used by entrance staff on `/greeter` tablet</div>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-[10.5px] font-black uppercase text-[#777777]">Access PIN Code</label>
+                      <div className="relative">
+                        <input
+                          type={showGreeterPin ? "text" : "password"}
+                          maxLength={6}
+                          value={greeterPin}
+                          onChange={(e) => setGreeterPin(e.target.value)}
+                          className="input-modern font-mono text-sm tracking-wider pr-10 font-black text-[#1E2D4E]"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowGreeterPin(!showGreeterPin)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                        >
+                          {showGreeterPin ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* TV Display PIN */}
+                  <div className="p-5 rounded-2xl bg-[#F9F7F4] border border-[#e2dfd7] space-y-4">
+                    <div>
+                      <div className="font-extrabold text-sm text-[#1E2D4E]">Live Store TV Screen PIN</div>
+                      <div className="text-[11px] text-[#777777] font-medium mt-0.5">Used for launch monitoring on `/tv` monitor</div>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-[10.5px] font-black uppercase text-[#777777]">Access PIN Code</label>
+                      <div className="relative">
+                        <input
+                          type={showTvPin ? "text" : "password"}
+                          maxLength={6}
+                          value={tvPin}
+                          onChange={(e) => setTvPin(e.target.value)}
+                          className="input-modern font-mono text-sm tracking-wider pr-10 font-black text-[#1E2D4E]"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowTvPin(!showTvPin)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                        >
+                          {showTvPin ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Cash Settlement PIN */}
+                  <div className="p-5 rounded-2xl bg-[#F9F7F4] border border-[#e2dfd7] space-y-4">
+                    <div>
+                      <div className="font-extrabold text-sm text-[#1E2D4E]">Cash Settlement Desk PIN</div>
+                      <div className="text-[11px] text-[#777777] font-medium mt-0.5">Used to unlock `/cash-settlement` daily audit</div>
+                    </div>
+
+                    <div className="space-y-1.5">
+                      <label className="text-[10.5px] font-black uppercase text-[#777777]">Access PIN Code</label>
+                      <div className="relative">
+                        <input
+                          type={showCashPin ? "text" : "password"}
+                          maxLength={6}
+                          value={cashPin}
+                          onChange={(e) => setCashPin(e.target.value)}
+                          className="input-modern font-mono text-sm tracking-wider pr-10 font-black text-[#1E2D4E]"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowCashPin(!showCashPin)}
+                          className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                        >
+                          {showCashPin ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex justify-end pt-2 border-t border-[#e2dfd7]">
+                  <button
+                    onClick={handleSavePins}
+                    disabled={savingPins}
+                    className="btn-primary text-xs shadow-md px-6 py-2.5 flex items-center gap-2"
+                  >
+                    {savingPins ? 'Saving Operational PINs…' : 'Save Operational PINs'}
+                  </button>
                 </div>
               </div>
             </div>

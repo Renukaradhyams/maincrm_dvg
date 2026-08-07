@@ -37,6 +37,28 @@ exports.getSettings = async (req, res) => {
   }
 };
 
+exports.updateSettings = async (req, res) => {
+  try {
+    const { tvPin, cashPin, greeterPin, companyName } = req.body;
+    const kv = {};
+    if (tvPin !== undefined) kv['tv_pin'] = String(tvPin).trim();
+    if (cashPin !== undefined) kv['cash_pin'] = String(cashPin).trim();
+    if (greeterPin !== undefined) kv['greeter_pin'] = String(greeterPin).trim();
+    if (companyName !== undefined) kv['company_name'] = String(companyName).trim();
+
+    for (const [key, val] of Object.entries(kv)) {
+      await db.query(
+        `INSERT INTO Setting (settingKey, settingValue, category) VALUES (?, ?, 'General')
+         ON DUPLICATE KEY UPDATE settingValue = VALUES(settingValue)`,
+        [key, val]
+      );
+    }
+    return res.json({ success: true, message: 'Settings updated successfully' });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+};
+
 exports.verifyPin = async (req, res) => {
   try {
     const { type, pin } = req.body; // type: 'tv' | 'cash' | 'greeter'

@@ -121,6 +121,7 @@ router.post('/settings/questions/delete', authenticate, authorize('Admin', 'Supe
 
 // ── CRM Store Operations Routes ──────────────────────────────
 router.get('/crm/settings', crmController.getSettings);
+router.post('/crm/settings/update', crmController.updateSettings);
 router.post('/crm/verify-pin', crmController.verifyPin);
 router.get('/crm/sections', crmController.getSections);
 

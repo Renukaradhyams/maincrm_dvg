@@ -23,6 +23,7 @@ router.get('/auth/me', authenticate, authController.getMe);
 
 // ── CRM Store Operations Module ─────────────────────────────
 router.get('/crm/settings', crmController.getSettings);
+router.post('/crm/settings/update', crmController.updateSettings);
 router.post('/crm/verify-pin', crmController.verifyPin);
 router.get('/crm/sections', crmController.getSections);
 

@@ -337,6 +337,7 @@ export const API = {
 
   // CRM Store Operations
   async getCrmSettings() { return apiFetch('/crm/settings'); },
+  async updateCrmSettings(payload: any) { return apiFetch('/crm/settings/update', { method: 'POST', body: JSON.stringify(payload) }); },
   async verifyPin(payload: { type: string; pin: string }) { return apiFetch('/crm/verify-pin', { method: 'POST', body: JSON.stringify(payload) }); },
   async getSections() { return apiFetch('/crm/sections'); },
   async getFootfall(date?: string) { return apiFetch(`/crm/footfall${date ? `?date=${date}` : ''}`); },
