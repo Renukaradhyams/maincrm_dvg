@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { X, Phone, Mail, MapPin, Calendar, Briefcase, DollarSign, FileText, UserCheck, ShieldCheck, ExternalLink, Award, User, Heart, Layers, Building, Edit3, Save, RotateCcw, Sparkles } from 'lucide-react';
+import { X, Phone, Mail, MapPin, Calendar, Briefcase, DollarSign, FileText, UserCheck, ExternalLink, Building, Edit3, Save, RotateCcw, Image as ImageIcon, FileCheck, CheckCircle } from 'lucide-react';
 import StatusBadge from './StatusBadge';
 import { API } from '../../services/api';
 import { showToast } from '../Toast';
@@ -14,7 +14,7 @@ interface CandidateProfileModalProps {
 }
 
 export default function CandidateProfileModal({ candidate, isOpen, onClose, onUpdated }: CandidateProfileModalProps) {
-  const [activeTab, setActiveTab] = useState<'overview' | 'screening' | 'employment' | 'documents'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'personal' | 'address' | 'family' | 'education' | 'employment' | 'languages' | 'documents'>('overview');
   const [isEditing, setIsEditing] = useState<boolean>(false);
   const [saving, setSaving] = useState<boolean>(false);
   const [currentCand, setCurrentCand] = useState<any | null>(candidate);
@@ -100,7 +100,7 @@ export default function CandidateProfileModal({ candidate, isOpen, onClose, onUp
 
       await API.updateCandidate(appNoKey, payload);
 
-      showToast('Candidate profile, status, and department updated successfully!', 'success');
+      showToast('Candidate details & status updated successfully! 🎉', 'success');
 
       setCurrentCand({
         ...currentCand,
@@ -133,7 +133,7 @@ export default function CandidateProfileModal({ candidate, isOpen, onClose, onUp
                 title="Edit Status, Department, Designation & Details"
               >
                 <Edit3 className="w-4 h-4" />
-                <span>Edit Profile</span>
+                <span>Edit Info</span>
               </button>
             ) : (
               <button
@@ -200,25 +200,29 @@ export default function CandidateProfileModal({ candidate, isOpen, onClose, onUp
                   </a>
                 )}
                 <span className="inline-flex items-center gap-1 px-3 py-1 rounded-xl bg-white/10 border border-white/10 text-emerald-300 font-bold">
-                  <Layers className="w-3.5 h-3.5" /> Section: {section}
+                  Section: {section}
                 </span>
               </div>
             </div>
           </div>
         </div>
 
-        {/* Tabs Bar */}
-        <div className="flex items-center gap-2 p-2 sm:px-6 bg-white border-b border-[#e2dfd7] overflow-x-auto text-xs font-bold scrollbar-none sticky top-0 z-10 shadow-xs">
+        {/* 8 Complete Tabs Navigation Bar */}
+        <div className="flex items-center gap-1.5 p-2 sm:px-6 bg-white border-b border-[#e2dfd7] overflow-x-auto text-xs font-bold scrollbar-none sticky top-0 z-10 shadow-xs">
           {[
-            { id: 'overview', label: '👤 Candidate Overview' },
-            { id: 'screening', label: '📋 Shortlisting & Screening Answers' },
-            { id: 'employment', label: '💼 Experience & Qualification' },
+            { id: 'overview', label: '👤 Overview' },
+            { id: 'personal', label: '📋 Personal Info' },
+            { id: 'address', label: '🏠 Address' },
+            { id: 'family', label: '👨‍👩‍👧 Family' },
+            { id: 'education', label: '🎓 Education' },
+            { id: 'employment', label: '💼 Employment' },
+            { id: 'languages', label: '🗣️ Languages' },
             { id: 'documents', label: '📄 Verified Documents' }
           ].map(t => (
             <button
               key={t.id}
               onClick={() => setActiveTab(t.id as any)}
-              className={`px-4 py-2 rounded-xl whitespace-nowrap transition-all text-xs font-black ${
+              className={`px-3.5 py-2 rounded-xl whitespace-nowrap transition-all text-xs font-black ${
                 activeTab === t.id
                   ? 'bg-[#1E2D4E] text-[#C9952A] shadow-md ring-1 ring-[#C9952A]/30'
                   : 'text-[#555555] hover:bg-[#F9F7F4] hover:text-[#1E2D4E]'
@@ -235,6 +239,7 @@ export default function CandidateProfileModal({ candidate, isOpen, onClose, onUp
           {!isEditing ? (
             /* VIEW MODE */
             <>
+              {/* TAB 1: OVERVIEW */}
               {activeTab === 'overview' && (
                 <div className="space-y-4 animate-fade-in">
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
@@ -257,90 +262,194 @@ export default function CandidateProfileModal({ candidate, isOpen, onClose, onUp
                   <div className="p-5 rounded-2xl bg-white border border-[#e2dfd7] shadow-xs space-y-3">
                     <h4 className="font-black text-[#1E2D4E] uppercase text-xs tracking-wider border-b border-[#e2dfd7] pb-2 flex items-center gap-2">
                       <Building className="w-4 h-4 text-[#C9952A]" />
-                      <span>Role Placement & Compensation</span>
+                      <span>Role Placement & Placement Meta</span>
                     </h4>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
                       <div><span className="text-[#777777] block text-[10.5px] font-bold">Designation Role</span><span className="font-extrabold text-[#1E2D4E] text-sm">{desig}</span></div>
-                      <div><span className="text-[#777777] block text-[10.5px] font-bold">Offered Salary</span><span className="font-extrabold text-emerald-800 text-sm font-mono">{currentCand.salary ? `₹${currentCand.salary}` : '—'}</span></div>
+                      <div><span className="text-[#777777] block text-[10.5px] font-bold">Offered / Expected Salary</span><span className="font-extrabold text-emerald-800 text-sm font-mono">{currentCand.salary || currentCand.expectedSalary ? `₹${currentCand.salary || currentCand.expectedSalary}` : '—'}</span></div>
                       <div><span className="text-[#777777] block text-[10.5px] font-bold">Estimated DOJ</span><span className="font-extrabold text-[#1E2D4E]">{currentCand.offeredDoj || currentCand.estDoj || currentCand.doj || '—'}</span></div>
                       <div><span className="text-[#777777] block text-[10.5px] font-bold">Store Branch</span><span className="font-extrabold text-[#1E2D4E]">{currentCand.branch || 'BSC EXCLUSIVE DAVANAGERE'}</span></div>
+                      <div><span className="text-[#777777] block text-[10.5px] font-bold">Referrer Name</span><span className="font-bold text-[#1E2D4E]">{currentCand.referrer ? `${currentCand.referrer} (${currentCand.referrerEmpNo || ''})` : '—'}</span></div>
+                      <div><span className="text-[#777777] block text-[10.5px] font-bold">Application Date</span><span className="font-bold text-[#1E2D4E]">{currentCand.date || '—'}</span></div>
+                    </div>
+
+                    {currentCand.remarks && (
+                      <div className="pt-2 border-t border-[#e2dfd7]">
+                        <span className="text-[#777777] block text-[10.5px] mb-1 font-bold uppercase">Shortlisting & Recruiter Remarks:</span>
+                        <div className="p-3 rounded-xl bg-[#F9F7F4] border border-[#e2dfd7] text-xs font-semibold text-[#1E2D4E]">
+                          {currentCand.remarks}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 2: PERSONAL INFO */}
+              {activeTab === 'personal' && (
+                <div className="p-5 rounded-2xl bg-white border border-[#e2dfd7] shadow-xs space-y-4 animate-fade-in">
+                  <h4 className="font-black text-[#1E2D4E] uppercase text-xs tracking-wider border-b border-[#e2dfd7] pb-2 flex items-center gap-2">
+                    <UserCheck className="w-4 h-4 text-[#C9952A]" />
+                    <span>Personal Profile Information</span>
+                  </h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                    <div><span className="text-[#777777] block text-[10.5px]">Full Applicant Name:</span><span className="font-extrabold text-[#1E2D4E] text-sm">{name}</span></div>
+                    <div><span className="text-[#777777] block text-[10.5px]">Mobile Phone Number:</span><span className="font-extrabold text-[#1E2D4E] font-mono text-sm">{currentCand.phone || '—'}</span></div>
+                    <div><span className="text-[#777777] block text-[10.5px]">Email Address:</span><span className="font-bold text-[#1E2D4E]">{currentCand.email || '—'}</span></div>
+                    <div><span className="text-[#777777] block text-[10.5px]">Gender:</span><span className="font-bold text-[#1E2D4E]">{currentCand.gender || '—'}</span></div>
+                    <div><span className="text-[#777777] block text-[10.5px]">Date of Birth:</span><span className="font-bold text-[#1E2D4E]">{currentCand.dob || '—'}</span></div>
+                    <div><span className="text-[#777777] block text-[10.5px]">Blood Group:</span><span className="font-bold text-rose-700">{currentCand.bloodGroup || '—'}</span></div>
+                    <div><span className="text-[#777777] block text-[10.5px]">Aadhaar Number (12 Digits):</span><span className="font-extrabold text-[#1E2D4E] font-mono">{currentCand.aadhaarNumber || currentCand.aadharNumber || '—'}</span></div>
+                    <div><span className="text-[#777777] block text-[10.5px]">Religion:</span><span className="font-bold text-[#1E2D4E]">{currentCand.religion || '—'}</span></div>
+                    <div><span className="text-[#777777] block text-[10.5px]">Caste / Category:</span><span className="font-bold text-[#1E2D4E]">{currentCand.caste || currentCand.religionCaste || '—'}</span></div>
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 3: ADDRESS */}
+              {activeTab === 'address' && (
+                <div className="p-5 rounded-2xl bg-white border border-[#e2dfd7] shadow-xs space-y-4 animate-fade-in">
+                  <h4 className="font-black text-[#1E2D4E] uppercase text-xs tracking-wider border-b border-[#e2dfd7] pb-2 flex items-center gap-2">
+                    <MapPin className="w-4 h-4 text-[#C9952A]" />
+                    <span>Residential Address & Location Details</span>
+                  </h4>
+                  <div className="space-y-3">
+                    <div>
+                      <span className="text-[#777777] block text-[10.5px] mb-1">Complete Residential Address:</span>
+                      <div className="p-3.5 rounded-xl bg-[#F9F7F4] border border-[#e2dfd7] font-semibold text-[#1E2D4E] leading-relaxed">
+                        {currentCand.address || currentCand.cityState || '—'}
+                      </div>
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div><span className="text-[#777777] block text-[10.5px]">City / Location:</span><span className="font-bold text-[#1E2D4E]">{currentCand.cityState || currentCand.city || '—'}</span></div>
+                      <div><span className="text-[#777777] block text-[10.5px]">State / Region:</span><span className="font-bold text-[#1E2D4E]">{currentCand.state || 'Karnataka'}</span></div>
                     </div>
                   </div>
                 </div>
               )}
 
-              {activeTab === 'screening' && (
-                <div className="space-y-4 animate-fade-in">
-                  <div className="p-5 rounded-2xl bg-white border border-[#e2dfd7] shadow-xs space-y-3">
-                    <h4 className="font-black text-[#1E2D4E] uppercase text-xs tracking-wider border-b border-[#e2dfd7] pb-2 flex items-center gap-2">
-                      <Sparkles className="w-4 h-4 text-[#C9952A]" />
-                      <span>Recruiter Screening & Remarks</span>
-                    </h4>
-                    <div className="p-4 rounded-xl bg-[#F9F7F4] border border-[#e2dfd7] text-xs font-semibold text-[#1E2D4E]">
-                      {currentCand.remarks || currentCand.offerRemarks || 'No screening notes recorded.'}
+              {/* TAB 4: FAMILY */}
+              {activeTab === 'family' && (
+                <div className="p-5 rounded-2xl bg-white border border-[#e2dfd7] shadow-xs space-y-4 animate-fade-in">
+                  <h4 className="font-black text-[#1E2D4E] uppercase text-xs tracking-wider border-b border-[#e2dfd7] pb-2 flex items-center gap-2">
+                    <FileText className="w-4 h-4 text-[#C9952A]" />
+                    <span>Family & Parental Background</span>
+                  </h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                    <div className="p-3.5 rounded-xl bg-[#F9F7F4] border border-[#e2dfd7] space-y-1">
+                      <span className="text-[#777777] text-[10.5px] font-bold block">Father's Name & Occupation</span>
+                      <span className="font-extrabold text-[#1E2D4E] block">{currentCand.fatherDetails || '—'}</span>
+                    </div>
+                    <div className="p-3.5 rounded-xl bg-[#F9F7F4] border border-[#e2dfd7] space-y-1">
+                      <span className="text-[#777777] text-[10.5px] font-bold block">Mother's Name & Occupation</span>
+                      <span className="font-extrabold text-[#1E2D4E] block">{currentCand.motherDetails || '—'}</span>
                     </div>
                   </div>
                 </div>
               )}
 
+              {/* TAB 5: EDUCATION */}
+              {activeTab === 'education' && (
+                <div className="p-5 rounded-2xl bg-white border border-[#e2dfd7] shadow-xs space-y-4 animate-fade-in">
+                  <h4 className="font-black text-[#1E2D4E] uppercase text-xs tracking-wider border-b border-[#e2dfd7] pb-2 flex items-center gap-2">
+                    <FileCheck className="w-4 h-4 text-[#C9952A]" />
+                    <span>Educational Qualifications</span>
+                  </h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+                    <div><span className="text-[#777777] block text-[10.5px]">Highest Qualification:</span><span className="font-extrabold text-[#1E2D4E] text-sm">{currentCand.qualification || '—'}</span></div>
+                    <div><span className="text-[#777777] block text-[10.5px]">Total Work Experience:</span><span className="font-extrabold text-[#1E2D4E] text-sm">{currentCand.experience || '—'}</span></div>
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 6: EMPLOYMENT */}
               {activeTab === 'employment' && (
                 <div className="space-y-4 animate-fade-in">
                   <div className="p-5 rounded-2xl bg-white border border-[#e2dfd7] shadow-xs space-y-4">
                     <h4 className="font-black text-[#1E2D4E] uppercase text-xs tracking-wider border-b border-[#e2dfd7] pb-2 flex items-center gap-2">
                       <Briefcase className="w-4 h-4 text-[#C9952A]" />
-                      <span>Work Experience & Background</span>
+                      <span>Work Experience & Salary Details</span>
                     </h4>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div><span className="text-[#777777] block text-[10.5px] font-bold">Total Work Experience</span><span className="font-extrabold text-[#1E2D4E]">{currentCand.experience || '—'}</span></div>
+                      <div><span className="text-[#777777] block text-[10.5px] font-bold">Total Experience</span><span className="font-extrabold text-[#1E2D4E]">{currentCand.experience || '—'}</span></div>
                       <div><span className="text-[#777777] block text-[10.5px] font-bold">Retail Industry Experience</span><span className="font-extrabold text-[#1E2D4E]">{currentCand.retailExperience || currentCand.retail_experience || '—'}</span></div>
                       <div><span className="text-[#777777] block text-[10.5px] font-bold">Previous Company</span><span className="font-extrabold text-[#1E2D4E]">{currentCand.previousCompany || currentCand.previous_company || '—'}</span></div>
-                      <div><span className="text-[#777777] block text-[10.5px] font-bold">Highest Qualification</span><span className="font-extrabold text-[#1E2D4E]">{currentCand.qualification || '—'}</span></div>
+                      <div><span className="text-[#777777] block text-[10.5px] font-bold">Previous Designation</span><span className="font-extrabold text-[#1E2D4E]">{currentCand.previousDesignation || currentCand.previous_designation || '—'}</span></div>
+                      <div><span className="text-[#777777] block text-[10.5px] font-bold">Previous Monthly Salary</span><span className="font-extrabold text-emerald-800 font-mono">₹ {currentCand.previousSalary || currentCand.currentSalary || '—'}</span></div>
+                      <div><span className="text-[#777777] block text-[10.5px] font-bold">Expected Monthly Salary</span><span className="font-extrabold text-emerald-800 font-mono">₹ {currentCand.expectedSalary || '—'}</span></div>
                     </div>
                   </div>
                 </div>
               )}
 
+              {/* TAB 7: LANGUAGES */}
+              {activeTab === 'languages' && (
+                <div className="p-5 rounded-2xl bg-white border border-[#e2dfd7] shadow-xs space-y-4 animate-fade-in">
+                  <h4 className="font-black text-[#1E2D4E] uppercase text-xs tracking-wider border-b border-[#e2dfd7] pb-2 flex items-center gap-2">
+                    <FileText className="w-4 h-4 text-[#C9952A]" />
+                    <span>Languages Known</span>
+                  </h4>
+                  <div className="flex flex-wrap gap-2">
+                    {currentCand.languagesKnown ? (
+                      (Array.isArray(currentCand.languagesKnown) ? currentCand.languagesKnown : JSON.parse(currentCand.languagesKnown)).map((lang: string) => (
+                        <span key={lang} className="px-3.5 py-1.5 rounded-xl bg-[#F9F7F4] border border-[#e2dfd7] font-extrabold text-xs text-[#1E2D4E]">
+                          🗣️ {lang}
+                        </span>
+                      ))
+                    ) : (
+                      <span className="text-[#777777] font-semibold italic">No languages specified</span>
+                    )}
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 8: DOCUMENTS */}
               {activeTab === 'documents' && (
                 <div className="space-y-4 animate-fade-in">
                   <div className="p-5 rounded-2xl bg-white border border-[#e2dfd7] shadow-xs space-y-4">
                     <h4 className="font-black text-[#1E2D4E] uppercase text-xs tracking-wider border-b border-[#e2dfd7] pb-2 flex items-center gap-2">
-                      <FileText className="w-4 h-4 text-[#C9952A]" />
-                      <span>Verified Documents & Uploads</span>
+                      <ImageIcon className="w-4 h-4 text-[#C9952A]" />
+                      <span>Verified Applicant Documents</span>
                     </h4>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      {fileUrl(currentCand.photoUrl) && (
+                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                      {fileUrl(currentCand.photoUrl) ? (
                         <a
                           href={fileUrl(currentCand.photoUrl)!}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="p-3 rounded-xl border border-[#e2dfd7] bg-[#F9F7F4] hover:bg-[#1E2D4E] hover:text-white transition-all flex items-center justify-between font-bold group"
+                          className="p-4 rounded-2xl border border-[#e2dfd7] bg-[#F9F7F4] hover:bg-[#1E2D4E] hover:text-white transition-all flex flex-col items-center gap-2 font-bold group"
                         >
-                          <span>📷 Profile Photo</span>
-                          <ExternalLink className="w-4 h-4 text-[#C9952A] group-hover:text-white" />
+                          <span className="text-2xl">📷</span>
+                          <span>Staff Profile Photo</span>
+                          <span className="text-[10px] text-[#C9952A] group-hover:text-white underline">View Document ↗</span>
                         </a>
-                      )}
-                      {fileUrl(currentCand.aadhaarUrl || currentCand.aadharUrl || currentCand.aadhaar_url || currentCand.aadhar_url) && (
+                      ) : <div className="p-4 text-center text-[#888888] border rounded-2xl bg-[#F9F7F4] font-bold">No Photo Uploaded</div>}
+
+                      {fileUrl(currentCand.aadhaarUrl || currentCand.aadharUrl || currentCand.aadhaar_url || currentCand.aadhar_url) ? (
                         <a
                           href={fileUrl(currentCand.aadhaarUrl || currentCand.aadharUrl || currentCand.aadhaar_url || currentCand.aadhar_url)!}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="p-3 rounded-xl border border-[#e2dfd7] bg-[#F9F7F4] hover:bg-[#1E2D4E] hover:text-white transition-all flex items-center justify-between font-bold group"
+                          className="p-4 rounded-2xl border border-[#e2dfd7] bg-[#F9F7F4] hover:bg-[#1E2D4E] hover:text-white transition-all flex flex-col items-center gap-2 font-bold group"
                         >
-                          <span>📄 Aadhaar Card Document</span>
-                          <ExternalLink className="w-4 h-4 text-[#C9952A] group-hover:text-white" />
+                          <span className="text-2xl">📄</span>
+                          <span>Aadhaar Card Document</span>
+                          <span className="text-[10px] text-[#C9952A] group-hover:text-white underline">View Document ↗</span>
                         </a>
-                      )}
-                      {fileUrl(currentCand.resumeUrl) && (
+                      ) : <div className="p-4 text-center text-[#888888] border rounded-2xl bg-[#F9F7F4] font-bold">No Aadhaar Uploaded</div>}
+
+                      {fileUrl(currentCand.resumeUrl) ? (
                         <a
                           href={fileUrl(currentCand.resumeUrl)!}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="p-3 rounded-xl border border-[#e2dfd7] bg-[#F9F7F4] hover:bg-[#1E2D4E] hover:text-white transition-all flex items-center justify-between font-bold group"
+                          className="p-4 rounded-2xl border border-[#e2dfd7] bg-[#F9F7F4] hover:bg-[#1E2D4E] hover:text-white transition-all flex flex-col items-center gap-2 font-bold group"
                         >
-                          <span>📑 Candidate Resume / CV</span>
-                          <ExternalLink className="w-4 h-4 text-[#C9952A] group-hover:text-white" />
+                          <span className="text-2xl">📑</span>
+                          <span>Candidate Resume / CV</span>
+                          <span className="text-[10px] text-[#C9952A] group-hover:text-white underline">View Document ↗</span>
                         </a>
-                      )}
+                      ) : <div className="p-4 text-center text-[#888888] border rounded-2xl bg-[#F9F7F4] font-bold">No Resume Uploaded</div>}
                     </div>
                   </div>
                 </div>
@@ -351,20 +460,21 @@ export default function CandidateProfileModal({ candidate, isOpen, onClose, onUp
             <div className="space-y-4 animate-fade-in bg-white p-5 rounded-2xl border border-[#C9952A]/40 shadow-md">
               <h3 className="font-black text-[#1E2D4E] text-sm uppercase tracking-wider border-b border-[#e2dfd7] pb-2 flex items-center gap-2">
                 <Edit3 className="w-4 h-4 text-[#C9952A]" />
-                <span>Edit Candidate Status, Department, Designation & Section</span>
+                <span>Edit Candidate Details, Status & Placement</span>
               </h3>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                 <div>
-                  <label className="block text-[11px] font-black text-[#1E2D4E] uppercase mb-1">Candidate Status</label>
+                  <label className="block text-[11px] font-black text-[#1E2D4E] uppercase mb-1">Pipeline Status</label>
                   <select
                     value={form.status}
                     onChange={(e) => setForm({ ...form, status: e.target.value })}
                     className="w-full px-3 py-2 rounded-xl border border-[#e2dfd7] text-xs font-black text-[#1E2D4E] outline-none focus:ring-2 focus:ring-[#C9952A]/40"
                   >
                     <option value="New">🌱 New Candidate</option>
-                    <option value="Shortlisted">📋 Shortlisted</option>
-                    <option value="Offer Issued">📄 Offer Issued</option>
+                    <option value="Shortlisted">📋 Shortlisted (Moved to Offer Desk)</option>
+                    <option value="Selected">✅ Selected</option>
+                    <option value="Offer Issued">📄 Offer Sent / Issued</option>
                     <option value="Joined">🎉 Joined (Active Staff)</option>
                     <option value="Hold">⏸ On Hold</option>
                     <option value="Rejected">❌ Rejected</option>
@@ -496,7 +606,7 @@ export default function CandidateProfileModal({ candidate, isOpen, onClose, onUp
                   className="btn-gold text-xs px-6 py-2 shadow-md flex items-center gap-1.5 font-black"
                 >
                   <Save className="w-4 h-4" />
-                  <span>{saving ? 'Saving Changes...' : 'Save Candidate Details'}</span>
+                  <span>{saving ? 'Saving Changes...' : 'Save Details'}</span>
                 </button>
               </>
             ) : (
