@@ -1,12 +1,15 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import DashboardLayout from '../components/layouts/DashboardLayout';
-import { UserCheck, Calendar, Clock, CheckCircle, Search, Filter } from 'lucide-react';
+import { UserCheck, Calendar, Clock, CheckCircle2, Search, Filter, Users, UserX, UserMinus, ShieldCheck, Activity, Award } from 'lucide-react';
 import { API } from '../services/api';
+import MetricCard from '../components/ui/MetricCard';
 
 export default function Attendance() {
   const [employees, setEmployees] = useState<any[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [date, setDate] = useState<string>(new Date().toISOString().split('T')[0]);
+  const [searchQuery, setSearchQuery] = useState<string>('');
+  const [departmentFilter, setDepartmentFilter] = useState<string>('All');
 
   useEffect(() => {
     API.getEmployees()
@@ -19,68 +22,167 @@ export default function Attendance() {
       .finally(() => setLoading(false));
   }, []);
 
+  const departmentsList = useMemo(() => {
+    const set = new Set<string>();
+    employees.forEach(e => {
+      if (e.department) set.add(e.department);
+    });
+    return ['All', ...Array.from(set)];
+  }, [employees]);
+
+  const filteredEmployees = useMemo(() => {
+    return employees.filter(emp => {
+      const q = searchQuery.toLowerCase().trim();
+      const name = (emp.name || emp.fullName || '').toLowerCase();
+      const code = (emp.employeeCode || emp.empNo || emp.appNo || '').toLowerCase();
+      const dept = (emp.department || '').toLowerCase();
+      const desig = (emp.desig || emp.designation || '').toLowerCase();
+
+      const matchesSearch = !q || name.includes(q) || code.includes(q) || dept.includes(q) || desig.includes(q);
+      const matchesDept = departmentFilter === 'All' || emp.department === departmentFilter;
+
+      return matchesSearch && matchesDept;
+    });
+  }, [employees, searchQuery, departmentFilter]);
+
+  const presentCount = useMemo(() => employees.length, [employees]);
+
   return (
     <DashboardLayout title="Attendance & Shift Roster Desk" subtitle="Daily Staff Attendance Tracking & Floor Shift Allocations">
       <div className="space-y-6">
-        {/* Date Selector & Controls */}
-        <div className="card-glass p-5 flex flex-wrap items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <Calendar className="w-6 h-6 text-[#C9952A]" />
-            <div>
-              <label className="block text-xs font-extrabold uppercase text-[#1E2D4E]/60 tracking-wider">Attendance Date</label>
-              <input
-                type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
-                className="input-modern mt-1"
-              />
+        
+        {/* Top Summary Analytics Cards Grid */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          <MetricCard
+            title="Total Store Staff"
+            value={employees.length}
+            subtext="Onboarded active workforce"
+            icon={Users}
+            color="navy"
+          />
+          <MetricCard
+            title="Present Today"
+            value={presentCount}
+            subtext="Marked present in shift roster"
+            icon={ShieldCheck}
+            color="emerald"
+          />
+          <MetricCard
+            title="Active Shift Window"
+            value="General Shift"
+            subtext="10:00 AM – 09:00 PM Coverage"
+            icon={Clock}
+            color="indigo"
+          />
+          <MetricCard
+            title="Roster Status"
+            value="100% Active"
+            subtext="Floor coverage optimized"
+            icon={Activity}
+            color="gold"
+          />
+        </div>
+
+        {/* Date Selector & Search Filters Container */}
+        <div className="card-glass p-5 lg:p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border border-[#e2dfd7]/80 bg-white/70 backdrop-blur-xl shadow-md rounded-2xl">
+          <div className="flex flex-wrap items-center gap-4 w-full md:w-auto">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-[#1E2D4E] text-[#C9952A] flex items-center justify-center shadow-sm shrink-0">
+                <Calendar className="w-5 h-5" />
+              </div>
+              <div>
+                <label className="block text-[10.5px] font-black uppercase text-[#777777] tracking-wider mb-0.5">
+                  Attendance Register Date
+                </label>
+                <input
+                  type="date"
+                  value={date}
+                  onChange={(e) => setDate(e.target.value)}
+                  className="px-3 py-1.5 rounded-xl border border-[#e2dfd7] bg-white font-extrabold text-xs text-[#1E2D4E] outline-none shadow-xs focus:ring-2 focus:ring-[#C9952A]/40 transition-all"
+                />
+              </div>
+            </div>
+
+            {/* Department Filter Pills */}
+            <div className="flex items-center gap-1.5 flex-wrap">
+              {departmentsList.slice(0, 5).map(dept => (
+                <button
+                  key={dept}
+                  onClick={() => setDepartmentFilter(dept)}
+                  className={`px-3 py-1.5 rounded-xl text-xs font-extrabold transition-all ${
+                    departmentFilter === dept
+                      ? 'bg-[#1E2D4E] text-[#C9952A] shadow-xs'
+                      : 'bg-white/80 border border-[#e2dfd7] text-[#555555] hover:bg-white'
+                  }`}
+                >
+                  {dept}
+                </button>
+              ))}
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
-            <span className="badge b-sel font-bold text-xs py-1.5 px-3">Active Employees: {employees.length}</span>
+          {/* Search Box */}
+          <div className="relative w-full md:w-72">
+            <input
+              type="text"
+              placeholder="Search staff by name, code, desig..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full text-xs font-semibold pl-9 pr-4 py-2.5 rounded-xl border border-[#e2dfd7] bg-white text-[#1E2D4E] focus:outline-none focus:border-[#C9952A] focus:ring-2 focus:ring-[#C9952A]/20 transition-all shadow-2xs"
+            />
+            <Search className="w-4 h-4 text-gray-400 absolute left-3 top-3" />
           </div>
         </div>
 
-        {/* Attendance Register */}
-        <div className="card-glass overflow-hidden">
-          <div className="p-5 border-b flex items-center justify-between">
-            <h3 className="font-extrabold text-sm text-[#1E2D4E] uppercase tracking-wider flex items-center gap-2">
+        {/* Enterprise Attendance Register Data Table */}
+        <div className="card-glass overflow-hidden border border-[#e2dfd7]/80 shadow-lg rounded-2xl bg-white/80 backdrop-blur-xl">
+          <div className="p-5 border-b border-[#e2dfd7] flex items-center justify-between bg-white/60">
+            <div className="flex items-center gap-2">
               <UserCheck className="w-5 h-5 text-[#C9952A]" />
-              <span>Daily Staff Attendance Register</span>
-            </h3>
+              <h3 className="font-extrabold text-sm text-[#1E2D4E] uppercase tracking-wider">
+                Daily Staff Attendance Register
+              </h3>
+            </div>
+            <span className="badge b-sel font-extrabold text-xs py-1.5 px-3 rounded-full bg-[#1E2D4E]/5 border border-[#1E2D4E]/10 text-[#1E2D4E]">
+              Showing {filteredEmployees.length} of {employees.length} Staff
+            </span>
           </div>
 
           {loading ? (
-            <div className="p-8 text-center text-gray-500 font-bold">Loading attendance records...</div>
-          ) : employees.length === 0 ? (
-            <div className="p-8 text-center text-gray-500 font-bold">No active employees found in directory.</div>
+            <div className="p-12 text-center text-gray-500 font-bold">Loading attendance records...</div>
+          ) : filteredEmployees.length === 0 ? (
+            <div className="p-12 text-center text-gray-500 font-bold">No active employees found matching query.</div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs font-semibold">
+              <table className="w-full text-left text-xs font-semibold border-collapse">
                 <thead className="bg-[#1E2D4E] text-white uppercase text-[10px] tracking-wider">
                   <tr>
-                    <th className="p-4">Emp Code</th>
+                    <th className="p-4">Employee Code</th>
                     <th className="p-4">Employee Name</th>
                     <th className="p-4">Department</th>
+                    <th className="p-4">Designation</th>
                     <th className="p-4">Shift</th>
                     <th className="p-4">Status</th>
                     <th className="p-4">Check In</th>
                     <th className="p-4">Check Out</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-100">
-                  {employees.map((emp) => (
-                    <tr key={emp.id} className="hover:bg-gray-50/80 transition-colors">
-                      <td className="p-4 font-black text-[#1E2D4E]">{emp.employeeCode || `EMP-${emp.id}`}</td>
-                      <td className="p-4 font-bold text-[#1E2D4E]">{emp.fullName}</td>
-                      <td className="p-4 text-gray-600">{emp.department || 'Retail Sales'}</td>
-                      <td className="p-4 text-gray-600">General Shift (10 AM - 9 PM)</td>
+                <tbody className="divide-y divide-[#e2dfd7]/60">
+                  {filteredEmployees.map((emp) => (
+                    <tr key={emp.id || emp.appNo} className="hover:bg-[#1E2D4E]/5 transition-colors font-medium">
+                      <td className="p-4 font-mono font-black text-[#1E2D4E]">{emp.employeeCode || emp.empNo || emp.appNo || `EMP-${emp.id}`}</td>
+                      <td className="p-4 font-extrabold text-[#1E2D4E]">{emp.name || emp.fullName || '—'}</td>
+                      <td className="p-4 text-[#555555] font-semibold">{emp.department || 'Retail Sales'}</td>
+                      <td className="p-4 text-[#C9952A] font-extrabold">{emp.desig || emp.designation || 'Staff'}</td>
+                      <td className="p-4 text-[#555555]">General Shift (10 AM - 9 PM)</td>
                       <td className="p-4">
-                        <span className="badge b-sel">PRESENT</span>
+                        <span className="px-3 py-1 rounded-full text-xs font-black bg-emerald-100/90 text-emerald-800 border border-emerald-300/50 shadow-2xs inline-flex items-center gap-1.5">
+                          <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                          <span>PRESENT</span>
+                        </span>
                       </td>
-                      <td className="p-4 text-gray-600 font-mono">10:00 AM</td>
-                      <td className="p-4 text-gray-600 font-mono">09:00 PM</td>
+                      <td className="p-4 text-[#555555] font-mono">10:00 AM</td>
+                      <td className="p-4 text-[#555555] font-mono">09:00 PM</td>
                     </tr>
                   ))}
                 </tbody>

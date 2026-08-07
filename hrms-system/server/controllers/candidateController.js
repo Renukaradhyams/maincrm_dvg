@@ -294,7 +294,9 @@ class CandidateController {
         return {
           id: r.id,
           appNo: r.app_no,
+          employeeCode: r.app_no,
           name: r.name,
+          fullName: r.name,
           initials,
           color: colors[colorIndex],
           phone: r.phone || '',

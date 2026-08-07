@@ -84,7 +84,7 @@ export default function DashboardPage() {
       if (candData && candData.candidates) setCandidates(candData.candidates);
 
       if (ffData && ffData.entries) {
-        const tot = ffData.entries.reduce((sum: number, e: any) => sum + (e.visitorsCount || e.visitors_count || 0), 0);
+        const tot = ffData.entries.reduce((sum: number, e: any) => sum + (Number(e.visitors !== undefined ? e.visitors : e.visitorsCount || e.visitors_count) || 0), 0);
         setFootfallToday(tot);
       }
       if (divData && divData.diverts) {
@@ -114,6 +114,12 @@ export default function DashboardPage() {
     const sess = Auth.get();
     setSession(sess);
     loadData();
+
+    // Poll every 5 seconds for real-time dashboard stats sync
+    const interval = setInterval(() => {
+      loadData();
+    }, 5000);
+    return () => clearInterval(interval);
   }, [loadData, navigate]);
 
   // Gender Statistics for Active Employees
