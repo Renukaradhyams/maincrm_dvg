@@ -8,7 +8,7 @@ import MetricCard from '../components/ui/MetricCard';
 import StatusBadge from '../components/ui/StatusBadge';
 import {
   Users, Search, Filter, Phone, Mail, Calendar, MapPin, Briefcase,
-  FileText, CheckCircle, Trash2, Edit3, X, ExternalLink, UserCheck, DollarSign, Image as ImageIcon, FileCheck, Upload, Download, TrendingUp
+  FileText, CheckCircle, Trash2, Edit3, X, ExternalLink, UserCheck, DollarSign, Image as ImageIcon, FileCheck, Upload, Download, TrendingUp, Building2, User
 } from 'lucide-react';
 import * as XLSX from 'xlsx';
 
@@ -34,25 +34,41 @@ export default function EmployeesPage() {
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
 
-  // Drawer
+  // Drawer Overview State
   const [drawerEmp, setDrawerEmp] = useState<any | null>(null);
   const [drawerTab, setDrawerTab] = useState<'overview' | 'personal' | 'professional' | 'documents'>('overview');
 
-  // Edit Modal State
+  // Comprehensive In-Page Edit Modal State
   const [editModal, setEditModal] = useState<{ open: boolean; emp: any | null }>({ open: false, emp: null });
+  const [editTab, setEditTab] = useState<'basic' | 'workplace' | 'compensation' | 'experience' | 'personal'>('basic');
   const [editForm, setEditForm] = useState({
     name: '',
     phone: '',
     email: '',
+    gender: 'MALE',
+    dob: '',
+    bloodGroup: '',
+    aadhaarNumber: '',
     desig: '',
     department: '',
     section: '',
+    branch: '',
+    reportingManager: '',
+    status: 'Joined',
     salary: '',
     incentive: '',
     offeredDoj: '',
-    status: '',
-    branch: '',
-    reportingManager: '',
+    experience: '',
+    retailExperience: '',
+    qualification: '',
+    previousCompany: '',
+    previousDesignation: '',
+    previousSalary: '',
+    fatherDetails: '',
+    motherDetails: '',
+    religion: '',
+    caste: '',
+    languagesKnown: '',
     remarks: ''
   });
   const [saving, setSaving] = useState(false);
@@ -76,21 +92,31 @@ export default function EmployeesPage() {
     return { base, incentive: 0, total: base, rawBase: str, rawIncentive: '' };
   };
 
-  const newestEmployee = useMemo(() => {
-    if (!employees || employees.length === 0) return null;
-    return [...employees].sort((a, b) => {
-      const dateA = a.actualDoj || a.offeredDoj || a.date ? new Date(a.actualDoj || a.offeredDoj || a.date).getTime() : 0;
-      const dateB = b.actualDoj || b.offeredDoj || b.date ? new Date(b.actualDoj || b.offeredDoj || b.date).getTime() : 0;
-      if (dateA !== dateB) return dateB - dateA;
-      return String(b.appNo || '').localeCompare(String(a.appNo || ''));
-    })[0];
-  }, [employees]);
-
   const loadEmployees = useCallback(async () => {
     try {
-      const d = await API.getEmployees();
-      if (d && d.employees) {
-        setEmployees(d.employees);
+      const [empData, secData] = await Promise.all([
+        API.getEmployees(),
+        API.getSectionAllocations().catch(() => ({ allocations: [] }))
+      ]);
+
+      if (empData && empData.employees) {
+        const allocMap: Record<string, string> = {};
+        if (secData && secData.allocations) {
+          secData.allocations.forEach((alloc: any) => {
+            if (alloc.employee_id) allocMap[alloc.employee_id] = alloc.section;
+            if (alloc.app_no) allocMap[alloc.app_no] = alloc.section;
+          });
+        }
+
+        const merged = empData.employees.map((e: any) => {
+          const key = e.appNo || e.empNo;
+          const assignedSec = e.section || (key && allocMap[key]) || '';
+          return {
+            ...e,
+            section: assignedSec
+          };
+        });
+        setEmployees(merged);
       }
     } catch (err: any) {
       showToast('Could not load employees: ' + err.message, 'error');
@@ -107,6 +133,27 @@ export default function EmployeesPage() {
     loadEmployees();
   }, [navigate, loadEmployees]);
 
+  // Unique lists for filtering
+  const isAdmin = session?.role === 'Admin' || session?.role === 'Super Admin';
+  const uniqueDesigs = Array.from(new Set(employees.map(e => e.desig).filter(Boolean)));
+
+  const uniqueSections = useMemo(() => {
+    const set = new Set<string>();
+    employees.forEach(e => {
+      if (e.section) set.add(e.section);
+    });
+    Object.values(BSC_DEPARTMENTS).forEach(deptObj => {
+      if (deptObj && Array.isArray((deptObj as any).sections)) {
+        (deptObj as any).sections.forEach((s: string) => set.add(s));
+      }
+    });
+    return Array.from(set).sort();
+  }, [employees]);
+
+  const uniqueDepts = useMemo(() => {
+    return getUniqueDepartments(employees.map(e => e.department));
+  }, [employees]);
+
   // Filtering & Alphabetical Sorting (A-Z)
   useEffect(() => {
     let list = [...employees];
@@ -120,7 +167,11 @@ export default function EmployeesPage() {
     }
 
     if (sectionFilter) {
-      list = list.filter(e => (e.section || '').toLowerCase().trim() === sectionFilter.toLowerCase().trim());
+      list = list.filter(e => {
+        const sec = (e.section || '').toLowerCase().trim();
+        const f = sectionFilter.toLowerCase().trim();
+        return sec === f || sec.includes(f);
+      });
     }
 
     if (desigFilter) {
@@ -131,7 +182,8 @@ export default function EmployeesPage() {
       list = list.filter(e =>
         (e.name || '').toLowerCase().includes(q) ||
         (e.appNo || '').toLowerCase().includes(q) ||
-        (e.phone || '').toLowerCase().includes(q)
+        (e.phone || '').toLowerCase().includes(q) ||
+        (e.section || '').toLowerCase().includes(q)
       );
     }
 
@@ -174,20 +226,44 @@ export default function EmployeesPage() {
 
   const handleOpenEdit = (emp: any) => {
     setEditModal({ open: true, emp });
+    setEditTab('basic');
     const parsedSal = parseSalaryAndIncentive(emp.salary);
+    
+    let langsStr = '';
+    if (Array.isArray(emp.languagesKnown)) {
+      langsStr = emp.languagesKnown.join(', ');
+    } else if (typeof emp.languagesKnown === 'string') {
+      langsStr = emp.languagesKnown;
+    }
+
     setEditForm({
-      name: emp.name || '',
+      name: emp.name || emp.fullName || '',
       phone: emp.phone || '',
       email: emp.email || '',
+      gender: emp.gender || 'MALE',
+      dob: emp.dob ? emp.dob.split('T')[0] : '',
+      bloodGroup: emp.bloodGroup || emp.blood_group || '',
+      aadhaarNumber: emp.aadhaarNumber || emp.aadhaar_number || '',
       desig: emp.desig || emp.designation || '',
       department: emp.department || '',
       section: emp.section || '',
+      branch: emp.branch || 'BSC EXCLUSIVE DAVANAGERE',
+      reportingManager: emp.reportingManager || emp.reporting_manager || '',
+      status: emp.status || 'Joined',
       salary: parsedSal.rawBase || (parsedSal.base ? String(parsedSal.base) : ''),
       incentive: parsedSal.rawIncentive || (parsedSal.incentive ? String(parsedSal.incentive) : ''),
       offeredDoj: emp.offeredDoj || emp.estDoj || emp.actualDoj || '',
-      status: emp.status || 'Joined',
-      branch: emp.branch || 'Main Branch (The Textile Mall)',
-      reportingManager: emp.reportingManager || '',
+      experience: emp.experience || '',
+      retailExperience: emp.retailExperience || emp.retail_experience || '',
+      qualification: emp.qualification || '',
+      previousCompany: emp.previousCompany || emp.previous_company || '',
+      previousDesignation: emp.previousDesignation || emp.previous_designation || '',
+      previousSalary: emp.previousSalary || emp.previous_salary || '',
+      fatherDetails: emp.fatherDetails || emp.father_details || '',
+      motherDetails: emp.motherDetails || emp.mother_details || '',
+      religion: emp.religion || '',
+      caste: emp.caste || emp.religionCaste || emp.religion_caste || '',
+      languagesKnown: langsStr,
       remarks: emp.remarks || ''
     });
   };
@@ -195,7 +271,7 @@ export default function EmployeesPage() {
   const handleSaveEdit = async () => {
     if (!editModal.emp) return;
     if (!editForm.name.trim() || !editForm.phone.trim()) {
-      showToast('Name and Phone are required', 'error');
+      showToast('Employee Name and Phone Number are required', 'error');
       return;
     }
 
@@ -205,30 +281,55 @@ export default function EmployeesPage() {
         ? `${editForm.salary.trim()}|${editForm.incentive.trim()}`
         : editForm.salary.trim();
 
-      await API.updateCandidate(editModal.emp.appNo, {
+      const langsArray = editForm.languagesKnown.split(',').map(s => s.trim()).filter(Boolean);
+
+      const updatedData = {
         isFullEdit: true,
-        name: editForm.name,
-        phone: editForm.phone,
-        email: editForm.email,
+        name: editForm.name.trim(),
+        phone: editForm.phone.trim(),
+        email: editForm.email.trim(),
+        gender: editForm.gender,
+        dob: editForm.dob,
+        bloodGroup: editForm.bloodGroup,
+        aadhaarNumber: editForm.aadhaarNumber,
         desig: editForm.desig,
         department: editForm.department,
         section: editForm.section,
-        salary: combinedSalary,
-        offeredDoj: editForm.offeredDoj,
-        status: editForm.status,
         branch: editForm.branch,
         reportingManager: editForm.reportingManager,
+        status: editForm.status,
+        salary: combinedSalary,
+        offeredDoj: editForm.offeredDoj,
+        experience: editForm.experience,
+        retailExperience: editForm.retailExperience,
+        qualification: editForm.qualification,
+        previousCompany: editForm.previousCompany,
+        previousDesignation: editForm.previousDesignation,
+        previousSalary: editForm.previousSalary,
+        fatherDetails: editForm.fatherDetails,
+        motherDetails: editForm.motherDetails,
+        religion: editForm.religion,
+        caste: editForm.caste,
+        languagesKnown: langsArray,
         remarks: editForm.remarks
-      });
+      };
 
-      showToast('Employee details updated successfully!', 'success');
+      await API.updateCandidate(editModal.emp.appNo, updatedData);
+
+      showToast('Complete employee information saved successfully!', 'success');
       setEditModal({ open: false, emp: null });
+      
+      // Update drawer payload if currently viewing the same employee
       if (drawerEmp && drawerEmp.appNo === editModal.emp.appNo) {
-        setDrawerEmp(null);
+        setDrawerEmp({
+          ...drawerEmp,
+          ...updatedData
+        });
       }
+      
       loadEmployees();
     } catch (err: any) {
-      showToast('Error updating employee: ' + err.message, 'error');
+      showToast('Error saving employee details: ' + err.message, 'error');
     } finally {
       setSaving(false);
     }
@@ -293,29 +394,24 @@ export default function EmployeesPage() {
 
   const handleDownloadSample = () => {
     const ws = XLSX.utils.json_to_sheet([{
-      Name: 'John Doe',
+      Name: 'Rahul Sharma',
       Phone: '9876543210',
-      Email: 'john@example.com',
+      Email: 'rahul@bsctextiles.com',
       Gender: 'MALE',
-      DOB: '1990-01-01',
+      DOB: '1995-05-15',
       BloodGroup: 'O+',
       Religion: 'Hindu',
       Caste: 'General',
-      Designation: 'Cashier',
-      Salary: '20000',
+      Designation: 'Section Supervisor',
+      Department: 'Mens',
+      Section: 'Ethnic Wear',
+      Salary: '25000',
       DOJ: '2023-01-15'
     }]);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Employees");
     XLSX.writeFile(wb, "Sample_Employee_Import.xlsx");
   };
-
-  const isAdmin = session?.role === 'Admin' || session?.role === 'Super Admin';
-  const uniqueDesigs = Array.from(new Set(employees.map(e => e.desig).filter(Boolean)));
-  const uniqueSections = Array.from(new Set(employees.map(e => e.section).filter(Boolean)));
-  const uniqueDepts = useMemo(() => {
-    return getUniqueDepartments(employees.map(e => e.department));
-  }, [employees]);
 
   return (
     <div className="min-h-screen bg-[#EDE8DE] flex">
@@ -337,10 +433,10 @@ export default function EmployeesPage() {
               <div>
                 <h3 className="font-extrabold text-[#1E2D4E] text-base tracking-tight flex items-center gap-2">
                   <TrendingUp className="w-5 h-5 text-[#C9952A]" />
-                  <span>Recruitment Analytics &amp; Pipeline</span>
+                  <span>Workforce Overview &amp; Section Analytics</span>
                 </h3>
                 <p className="text-xs text-[#777777] font-medium mt-0.5">
-                  Real-time candidate metrics, funnel conversion &amp; team performance.
+                  Real-time active employee records, department floor allocations &amp; section master lists.
                 </p>
               </div>
 
@@ -371,14 +467,13 @@ export default function EmployeesPage() {
 
             {/* Custom Date Range Picker */}
             <div className="flex flex-wrap items-center gap-3 bg-[#F9F7F4] p-3 rounded-2xl border border-[#e2dfd7] text-xs font-bold text-[#1E2D4E]">
-              <span className="text-[#777777] uppercase text-[10.5px] font-black">Custom Range:</span>
+              <span className="text-[#777777] uppercase text-[10.5px] font-black">Custom Date Range:</span>
               <div className="flex items-center gap-2">
                 <input
                   type="date"
                   value={fromDate}
                   onChange={(e) => { setFromDate(e.target.value); setActiveRange('custom'); }}
                   className="px-2.5 py-1.5 rounded-xl border border-[#e2dfd7] bg-white font-semibold outline-none text-xs"
-                  placeholder="dd-mm-yyyy"
                 />
                 <span className="text-[#777777] font-extrabold">to</span>
                 <input
@@ -386,7 +481,6 @@ export default function EmployeesPage() {
                   value={toDate}
                   onChange={(e) => { setToDate(e.target.value); setActiveRange('custom'); }}
                   className="px-2.5 py-1.5 rounded-xl border border-[#e2dfd7] bg-white font-semibold outline-none text-xs"
-                  placeholder="dd-mm-yyyy"
                 />
               </div>
               {(fromDate || toDate || activeRange !== 'all') && (
@@ -407,7 +501,7 @@ export default function EmployeesPage() {
                 <UserCheck className="w-5 h-5 text-[#1a8a84]" />
                 <span>Onboarded Staff Directory</span>
               </h2>
-              <p className="text-xs text-[#666666] font-medium mt-0.5 font-sans">Active company workforce records, offered DOJ, salary packages &amp; uploaded documents.</p>
+              <p className="text-xs text-[#666666] font-medium mt-0.5 font-sans">Active company workforce records, store section allocations &amp; employee profiles.</p>
             </div>
 
             <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
@@ -419,7 +513,7 @@ export default function EmployeesPage() {
                   <Download className="w-3.5 h-3.5" /> Sample
                 </button>
                 <label className="px-3 py-1.5 rounded-xl bg-[#1E2D4E] text-white text-xs font-bold cursor-pointer hover:bg-[#162340] flex items-center gap-1.5 shadow-xs">
-                  <Upload className="w-3.5 h-3.5" /> Import
+                  <Upload className="w-3.5 h-3.5" /> Import Excel
                   <input type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleImportExcel} disabled={saving} />
                 </label>
               </div>
@@ -430,7 +524,7 @@ export default function EmployeesPage() {
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search employee, phone, app no..."
+                  placeholder="Search employee, phone, section..."
                   className="pl-9 pr-3 py-1.5 rounded-xl border border-[#e2dfd7] bg-[#F9F7F4] text-xs font-semibold text-[#1E2D4E] focus:outline-none focus:border-[#1E2D4E] w-56 shadow-xs"
                 />
               </div>
@@ -446,10 +540,11 @@ export default function EmployeesPage() {
                 ))}
               </select>
 
+              {/* Working Section Filter */}
               <select
                 value={sectionFilter}
                 onChange={(e) => setSectionFilter(e.target.value)}
-                className="px-3 py-1.5 rounded-xl border border-[#e2dfd7] bg-[#F9F7F4] text-xs font-semibold text-[#1E2D4E]"
+                className="px-3 py-1.5 rounded-xl border border-[#e2dfd7] bg-[#F9F7F4] text-xs font-bold text-[#1E2D4E]"
               >
                 <option value="">All Sections</option>
                 {uniqueSections.map(s => (
@@ -490,48 +585,54 @@ export default function EmployeesPage() {
               color="teal"
             />
             <MetricCard
+              title="Store Sections Allocated"
+              value={uniqueSections.length}
+              subtext="Active department floor sections"
+              icon={Building2}
+              color="gold"
+            />
+            <MetricCard
               title="Designations Covered"
               value={uniqueDesigs.length}
               subtext="Active company roles"
               icon={Briefcase}
               color="navy"
             />
-            <MetricCard
-              title="Newest Joined"
-              value={newestEmployee ? newestEmployee.name : '—'}
-              subtext={newestEmployee ? `DOJ: ${newestEmployee.actualDoj || newestEmployee.offeredDoj || 'Recent'}` : 'No records'}
-              icon={Users}
-              color="gold"
-            />
           </div>
 
-          {/* Employee Directory DataGrid */}
+          {/* Main Employees Directory Table */}
           <div className="card-glass p-5 space-y-4">
+            <div className="flex items-center justify-between border-b border-[#e2dfd7] pb-3">
+              <h3 className="font-extrabold text-[#1E2D4E] text-sm tracking-tight">
+                Staff Register ({filtered.length} Employees)
+              </h3>
+            </div>
+
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
-                  <tr className="border-b border-[#e2dfd7] text-[10.5px] font-black uppercase text-[#777777] tracking-wider bg-[#F9F7F4]/60">
-                    <th className="py-3 px-3 text-center w-12">SL.NO</th>
-                    <th className="py-3 px-4">App No</th>
+                  <tr className="border-b border-[#e2dfd7] text-[10.5px] font-black uppercase text-[#777777] bg-[#F9F7F4]/60">
+                    <th className="py-3 px-3 text-center">#</th>
+                    <th className="py-3 px-4">Emp / App No</th>
                     <th className="py-3 px-4">Employee Name</th>
                     <th className="py-3 px-4">Designation</th>
                     <th className="py-3 px-4">Department</th>
-                    <th className="py-3 px-4">Phone / Contact</th>
-                    <th className="py-3 px-4">Offered Salary</th>
-                    <th className="py-3 px-4">DOJ Offered</th>
+                    <th className="py-3 px-4">Section</th>
+                    <th className="py-3 px-4">Phone</th>
+                    <th className="py-3 px-4">Joining Date</th>
                     <th className="py-3 px-4">Status</th>
                     <th className="py-3 px-4 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#e2dfd7]/60">
                   {filtered.map((emp, idx) => (
-                    <tr key={emp.appNo} onClick={() => setDrawerEmp(emp)} className="hover:bg-black/5 cursor-pointer transition-colors font-medium">
+                    <tr key={emp.appNo || idx} onClick={() => setDrawerEmp(emp)} className="hover:bg-black/5 cursor-pointer transition-colors font-medium">
                       <td className="py-3.5 px-3 text-center font-bold text-[#666666]">{idx + 1}</td>
-                      <td className="py-3.5 px-4 font-mono text-[#555555] font-bold">{emp.appNo}</td>
+                      <td className="py-3.5 px-4 font-mono text-[#555555] font-bold">{emp.appNo || emp.empNo}</td>
                       <td className="py-3.5 px-4">
                         <div className="flex items-center gap-3 group text-left">
                           <div className="w-8 h-8 rounded-full bg-[#1E2D4E] text-white font-black text-xs flex items-center justify-center shadow-xs">
-                            {emp.initials}
+                            {emp.initials || emp.name?.slice(0, 2).toUpperCase()}
                           </div>
                           <div>
                             <span className="font-extrabold text-[#1E2D4E] group-hover:underline block">{formatName(emp.name)}</span>
@@ -539,32 +640,10 @@ export default function EmployeesPage() {
                           </div>
                         </div>
                       </td>
-                      <td className="py-3.5 px-4 text-[#1E2D4E] font-extrabold">{emp.desig}</td>
+                      <td className="py-3.5 px-4 text-[#1E2D4E] font-extrabold">{emp.desig || emp.designation || 'Staff'}</td>
                       <td className="py-3.5 px-4 text-[#555555] font-semibold">{emp.department || '—'}</td>
+                      <td className="py-3.5 px-4 text-[#C9952A] font-extrabold">{emp.section || 'Unassigned'}</td>
                       <td className="py-3.5 px-4 font-mono text-[#555555]">{emp.phone}</td>
-                      <td className="py-3.5 px-4">
-                        {(() => {
-                          const sal = parseSalaryAndIncentive(emp.salary);
-                          return (
-                            <div className="flex flex-col gap-0.5">
-                              <div className="flex items-center gap-1.5">
-                                <span className="text-[10px] uppercase text-[#777777] font-extrabold">Base:</span>
-                                <span className="font-extrabold text-[#1E2D4E] font-mono">₹{sal.base.toLocaleString('en-IN')}</span>
-                              </div>
-                              {sal.incentive > 0 && (
-                                <div className="flex items-center gap-1.5">
-                                  <span className="text-[10px] uppercase text-emerald-600 font-extrabold">Inc:</span>
-                                  <span className="font-bold text-emerald-700 font-mono">+₹{sal.incentive.toLocaleString('en-IN')}</span>
-                                </div>
-                              )}
-                              <div className="flex items-center gap-1.5 border-t border-[#e2dfd7]/60 pt-0.5 mt-0.5">
-                                <span className="text-[10px] uppercase text-amber-800 font-extrabold">Pkg:</span>
-                                <span className="font-black text-[#1E2D4E] font-mono text-xs">₹{sal.total.toLocaleString('en-IN')}</span>
-                              </div>
-                            </div>
-                          );
-                        })()}
-                      </td>
                       <td className="py-3.5 px-4 font-bold text-[#666666]">
                         {emp.offeredDoj || emp.estDoj || emp.actualDoj || '—'}
                       </td>
@@ -577,7 +656,7 @@ export default function EmployeesPage() {
                           <button
                             onClick={() => handleOpenEdit(emp)}
                             className="p-1.5 rounded-lg border border-emerald-600 text-emerald-700 font-bold hover:bg-emerald-50 transition-colors shadow-xs"
-                            title="Edit Employee Details"
+                            title="Edit Complete Employee Information"
                           >
                             <Edit3 className="w-3.5 h-3.5" />
                           </button>
@@ -597,8 +676,8 @@ export default function EmployeesPage() {
                   ))}
                   {filtered.length === 0 && (
                     <tr>
-                      <td colSpan={8} className="py-12 text-center text-xs text-[#888888] font-semibold">
-                        No employees found.
+                      <td colSpan={10} className="py-12 text-center text-xs text-[#888888] font-semibold">
+                        No employees found matching the filters.
                       </td>
                     </tr>
                   )}
@@ -609,128 +688,274 @@ export default function EmployeesPage() {
         </main>
       </div>
 
-      {/* Edit Modal */}
+      {/* Comprehensive In-Page Complete Employee Edit Modal */}
       {editModal.open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs">
-          <div className="w-full max-w-md bg-white rounded-2xl p-6 space-y-4 shadow-2xl animate-fade-in">
-            <div className="flex items-center justify-between border-b border-[#e2dfd7] pb-3">
-              <h3 className="font-extrabold text-[#1E2D4E] text-base">Edit Employee — {editModal.emp?.name}</h3>
-              <button onClick={() => setEditModal({ open: false, emp: null })} className="text-[#888888]">
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-[#1E2D4E]/60 backdrop-blur-md transition-all animate-fade-in">
+          <div className="relative w-full max-w-3xl max-h-[90vh] bg-white rounded-3xl shadow-2xl flex flex-col overflow-hidden border border-[#C9952A]/40">
+            {/* Modal Header */}
+            <div className="bg-[#1E2D4E] text-white p-4 sm:p-5 flex items-center justify-between border-b border-[#C9952A]/30">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-[#C9952A] text-white font-black text-lg flex items-center justify-center shadow-md">
+                  <Edit3 className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="font-extrabold text-white text-base sm:text-lg">Edit Employee Details — {editModal.emp?.name}</h3>
+                  <div className="text-xs text-[#C9952A] font-mono mt-0.5 font-bold">
+                    App/Emp ID: {editModal.emp?.appNo || editModal.emp?.empNo}
+                  </div>
+                </div>
+              </div>
+
+              <button onClick={() => setEditModal({ open: false, emp: null })} className="p-2 rounded-xl bg-white/10 text-white hover:bg-white/20 transition-colors">
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="space-y-3 text-xs max-h-[75vh] overflow-y-auto pr-1">
-              <div>
-                <label className="block font-bold text-[#1E2D4E] mb-1">Full Employee Name *</label>
-                <input type="text" value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} className="input-modern font-bold text-[#1E2D4E]" />
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-bold text-[#1E2D4E] mb-1">Phone Number *</label>
-                  <input type="text" value={editForm.phone} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} className="input-modern font-mono" />
-                </div>
-                <div>
-                  <label className="block font-bold text-[#1E2D4E] mb-1">Email Address</label>
-                  <input type="email" value={editForm.email} onChange={(e) => setEditForm({ ...editForm, email: e.target.value })} className="input-modern" />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-bold text-[#1E2D4E] mb-1">Designation Role</label>
-                  <input type="text" value={editForm.desig} onChange={(e) => setEditForm({ ...editForm, desig: e.target.value })} className="input-modern font-bold" />
-                </div>
-                <div>
-                  <label className="block font-bold text-[#1E2D4E] mb-1">Allocated Department</label>
-                  <select value={editForm.department || ''} onChange={(e) => setEditForm({ ...editForm, department: e.target.value })} className="select-modern font-bold">
-                    <option value="">Select Department</option>
-                    <option value="Ground Floor Saree">Ground Floor Saree</option>
-                    <option value="First Floor Saree">First Floor Saree</option>
-                    <option value="Art & Raw Silk Saree">Art & Raw Silk Saree</option>
-                    <option value="Ladies">Ladies</option>
-                    <option value="Kids">Kids</option>
-                    <option value="Mens">Mens</option>
-                    <option value="Home Furnishing">Home Furnishing</option>
-                    <option value="Others">Others</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-bold text-[#1E2D4E] mb-1">Allocated Section / Floor Area</label>
-                  <input type="text" value={editForm.section || ''} onChange={(e) => setEditForm({ ...editForm, section: e.target.value })} placeholder="e.g. Counter 3" className="input-modern font-bold" />
-                </div>
-                <div>
-                  <label className="block font-bold text-[#1E2D4E] mb-1">Offered Monthly Base Salary (₹)</label>
-                  <input type="text" value={editForm.salary} onChange={(e) => setEditForm({ ...editForm, salary: e.target.value })} placeholder="e.g. 25000" className="input-modern font-mono font-bold text-emerald-800" />
-                </div>
-                <div>
-                  <label className="block font-bold text-[#1E2D4E] mb-1">Offered Monthly Incentive (₹)</label>
-                  <input type="text" value={editForm.incentive} onChange={(e) => setEditForm({ ...editForm, incentive: e.target.value })} placeholder="e.g. 2000" className="input-modern font-mono font-bold text-emerald-700" />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-bold text-[#1E2D4E] mb-1">Date of Joining (DOJ)</label>
-                  <input type="date" value={editForm.offeredDoj} onChange={(e) => setEditForm({ ...editForm, offeredDoj: e.target.value })} className="input-modern font-bold text-amber-800" />
-                </div>
-                <div>
-                  <label className="block font-bold text-[#1E2D4E] mb-1">Employee Status</label>
-                  <select
-                    value={editForm.status}
-                    onChange={(e) => setEditForm({ ...editForm, status: e.target.value })}
-                    className="select-modern font-bold"
-                  >
-                    <option value="Joined">Joined</option>
-                    <option value="Offer Accepted">Offer Accepted</option>
-                    <option value="Selected">Selected</option>
-                    <option value="Offer Sent">Offer Sent</option>
-                    <option value="Probation">Probation</option>
-                    <option value="Resigned">Resigned</option>
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-bold text-[#1E2D4E] mb-1">Branch Location</label>
-                  <input type="text" value={editForm.branch} onChange={(e) => setEditForm({ ...editForm, branch: e.target.value })} placeholder="Main Branch" className="input-modern" />
-                </div>
-                <div>
-                  <label className="block font-bold text-[#1E2D4E] mb-1">Reporting Manager</label>
-                  <input type="text" value={editForm.reportingManager} onChange={(e) => setEditForm({ ...editForm, reportingManager: e.target.value })} placeholder="Store Manager" className="input-modern" />
-                </div>
-              </div>
-
-              <div>
-                <label className="block font-bold text-[#1E2D4E] mb-1">Shortlisting & Recruiter Remarks</label>
-                <textarea
-                  rows={2}
-                  value={editForm.remarks}
-                  onChange={(e) => setEditForm({ ...editForm, remarks: e.target.value })}
-                  placeholder="Enter employee notes, HR remarks, or special package terms..."
-                  className="input-modern"
-                />
-              </div>
+            {/* Modal Tabs Navigation */}
+            <div className="flex items-center gap-2 p-3 bg-[#F9F7F4] border-b border-[#e2dfd7] overflow-x-auto text-xs font-bold">
+              {[
+                { id: 'basic', label: '👤 Basic Info', icon: User },
+                { id: 'workplace', label: '🏢 Workplace & Section', icon: Building2 },
+                { id: 'compensation', label: '💰 Salary & Package', icon: DollarSign },
+                { id: 'experience', label: '💼 Experience & Ed', icon: Briefcase },
+                { id: 'personal', label: '📋 Personal & Family', icon: FileText }
+              ].map(tab => (
+                <button
+                  key={tab.id}
+                  onClick={() => setEditTab(tab.id as any)}
+                  className={`px-3.5 py-2 rounded-xl whitespace-nowrap transition-all flex items-center gap-1.5 text-xs font-extrabold ${
+                    editTab === tab.id
+                      ? 'bg-[#1E2D4E] text-white shadow-sm'
+                      : 'text-[#555555] hover:bg-white hover:text-[#1E2D4E]'
+                  }`}
+                >
+                  <span>{tab.label}</span>
+                </button>
+              ))}
             </div>
 
-            <div className="flex justify-end gap-2 pt-3 border-t border-[#e2dfd7]">
-              <button onClick={() => setEditModal({ open: false, emp: null })} className="px-4 py-2 rounded-xl border border-[#e2dfd7] font-bold text-xs">
-                Cancel
-              </button>
-              <button onClick={handleSaveEdit} disabled={saving} className="btn-primary text-xs shadow-md disabled:opacity-50">
-                {saving ? 'Saving Changes...' : 'Save Employee Details'}
-              </button>
+            {/* Modal Scrollable Form Body */}
+            <div className="flex-1 overflow-y-auto p-5 space-y-4 text-xs bg-[#EDE8DE]">
+              {/* TAB 1: BASIC INFO */}
+              {editTab === 'basic' && (
+                <div className="space-y-4 bg-white p-5 rounded-2xl border border-[#e2dfd7] shadow-xs">
+                  <div>
+                    <label className="block font-bold text-[#1E2D4E] mb-1">Full Employee Name *</label>
+                    <input type="text" value={editForm.name} onChange={(e) => setEditForm({ ...editForm, name: e.target.value })} className="input-modern font-extrabold text-[#1E2D4E]" required />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block font-bold text-[#1E2D4E] mb-1">Phone Number *</label>
+                      <input type="text" value={editForm.phone} onChange={(e) => setEditForm({ ...editForm, phone: e.target.value })} className="input-modern font-mono" required />
+                    </div>
+                    <div>
+                      <label className="block font-bold text-[#1E2D4E] mb-1">Email Address</label>
+                      <input type="email" value={editForm.email} onChange={(e) => setEditForm({ ...editForm, email: e.target.value })} className="input-modern" />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div>
+                      <label className="block font-bold text-[#1E2D4E] mb-1">Gender</label>
+                      <select value={editForm.gender} onChange={(e) => setEditForm({ ...editForm, gender: e.target.value })} className="select-modern font-bold">
+                        <option value="MALE">MALE</option>
+                        <option value="FEMALE">FEMALE</option>
+                        <option value="OTHER">OTHER</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block font-bold text-[#1E2D4E] mb-1">Date of Birth (DOB)</label>
+                      <input type="date" value={editForm.dob} onChange={(e) => setEditForm({ ...editForm, dob: e.target.value })} className="input-modern" />
+                    </div>
+                    <div>
+                      <label className="block font-bold text-[#1E2D4E] mb-1">Blood Group</label>
+                      <input type="text" placeholder="e.g. O+, A+" value={editForm.bloodGroup} onChange={(e) => setEditForm({ ...editForm, bloodGroup: e.target.value })} className="input-modern" />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-[#1E2D4E] mb-1">Aadhaar Card Number</label>
+                    <input type="text" placeholder="12-digit Aadhaar number" value={editForm.aadhaarNumber} onChange={(e) => setEditForm({ ...editForm, aadhaarNumber: e.target.value })} className="input-modern font-mono" />
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 2: WORKPLACE & SECTION */}
+              {editTab === 'workplace' && (
+                <div className="space-y-4 bg-white p-5 rounded-2xl border border-[#e2dfd7] shadow-xs">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block font-bold text-[#1E2D4E] mb-1">Designation Role</label>
+                      <input type="text" value={editForm.desig} onChange={(e) => setEditForm({ ...editForm, desig: e.target.value })} className="input-modern font-extrabold text-[#1E2D4E]" />
+                    </div>
+                    <div>
+                      <label className="block font-bold text-[#1E2D4E] mb-1">Allocated Department</label>
+                      <select value={editForm.department || ''} onChange={(e) => setEditForm({ ...editForm, department: e.target.value })} className="select-modern font-bold">
+                        <option value="">Select Department</option>
+                        <option value="Ground Floor Saree">Ground Floor Saree</option>
+                        <option value="First Floor Saree">First Floor Saree</option>
+                        <option value="Mens">Mens</option>
+                        <option value="Ladies">Ladies</option>
+                        <option value="Kids">Kids</option>
+                        <option value="Home Furnishing">Home Furnishing</option>
+                        <option value="Operations & Support">Operations &amp; Support</option>
+                        <option value="Accounts & Billing">Accounts &amp; Billing</option>
+                        <option value="Security & Housekeeping">Security &amp; Housekeeping</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block font-bold text-[#1E2D4E] mb-1">Assigned Floor Section</label>
+                      <input type="text" placeholder="e.g. Ethnic Wear, Silk, Cash Counter" value={editForm.section} onChange={(e) => setEditForm({ ...editForm, section: e.target.value })} className="input-modern font-extrabold text-[#C9952A]" />
+                    </div>
+                    <div>
+                      <label className="block font-bold text-[#1E2D4E] mb-1">Employment Status</label>
+                      <select value={editForm.status} onChange={(e) => setEditForm({ ...editForm, status: e.target.value })} className="select-modern font-bold">
+                        <option value="Joined">Joined (Active Staff)</option>
+                        <option value="New">New Candidate</option>
+                        <option value="Offer Accepted">Offer Accepted</option>
+                        <option value="Notice Period">Notice Period</option>
+                        <option value="Completed Exit">Completed Exit</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block font-bold text-[#1E2D4E] mb-1">Branch Location</label>
+                      <input type="text" value={editForm.branch} onChange={(e) => setEditForm({ ...editForm, branch: e.target.value })} className="input-modern" />
+                    </div>
+                    <div>
+                      <label className="block font-bold text-[#1E2D4E] mb-1">Reporting Manager</label>
+                      <input type="text" value={editForm.reportingManager} onChange={(e) => setEditForm({ ...editForm, reportingManager: e.target.value })} className="input-modern" />
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 3: SALARY & PACKAGE */}
+              {editTab === 'compensation' && (
+                <div className="space-y-4 bg-white p-5 rounded-2xl border border-[#e2dfd7] shadow-xs">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block font-bold text-[#1E2D4E] mb-1">Base Monthly Salary (₹)</label>
+                      <input type="text" placeholder="e.g. 20000" value={editForm.salary} onChange={(e) => setEditForm({ ...editForm, salary: e.target.value })} className="input-modern font-mono font-bold text-[#1E2D4E]" />
+                    </div>
+                    <div>
+                      <label className="block font-bold text-[#1E2D4E] mb-1">Monthly Incentive / Bonus (₹)</label>
+                      <input type="text" placeholder="e.g. 3000" value={editForm.incentive} onChange={(e) => setEditForm({ ...editForm, incentive: e.target.value })} className="input-modern font-mono font-bold text-emerald-700" />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-[#1E2D4E] mb-1">Date of Joining (DOJ)</label>
+                    <input type="date" value={editForm.offeredDoj} onChange={(e) => setEditForm({ ...editForm, offeredDoj: e.target.value })} className="input-modern" />
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 4: EXPERIENCE & EDUCATION */}
+              {editTab === 'experience' && (
+                <div className="space-y-4 bg-white p-5 rounded-2xl border border-[#e2dfd7] shadow-xs">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block font-bold text-[#1E2D4E] mb-1">Total Work Experience</label>
+                      <input type="text" placeholder="e.g. 3 Years" value={editForm.experience} onChange={(e) => setEditForm({ ...editForm, experience: e.target.value })} className="input-modern" />
+                    </div>
+                    <div>
+                      <label className="block font-bold text-[#1E2D4E] mb-1">Prior / Retail Experience</label>
+                      <input type="text" placeholder="e.g. 2 Years in Textiles" value={editForm.retailExperience} onChange={(e) => setEditForm({ ...editForm, retailExperience: e.target.value })} className="input-modern" />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div>
+                      <label className="block font-bold text-[#1E2D4E] mb-1">Previous Company</label>
+                      <input type="text" value={editForm.previousCompany} onChange={(e) => setEditForm({ ...editForm, previousCompany: e.target.value })} className="input-modern" />
+                    </div>
+                    <div>
+                      <label className="block font-bold text-[#1E2D4E] mb-1">Previous Designation</label>
+                      <input type="text" value={editForm.previousDesignation} onChange={(e) => setEditForm({ ...editForm, previousDesignation: e.target.value })} className="input-modern" />
+                    </div>
+                    <div>
+                      <label className="block font-bold text-[#1E2D4E] mb-1">Previous Salary</label>
+                      <input type="text" value={editForm.previousSalary} onChange={(e) => setEditForm({ ...editForm, previousSalary: e.target.value })} className="input-modern font-mono" />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-[#1E2D4E] mb-1">Highest Qualification</label>
+                    <input type="text" placeholder="e.g. SSLC, PUC, B.Com" value={editForm.qualification} onChange={(e) => setEditForm({ ...editForm, qualification: e.target.value })} className="input-modern" />
+                  </div>
+                </div>
+              )}
+
+              {/* TAB 5: PERSONAL & FAMILY */}
+              {editTab === 'personal' && (
+                <div className="space-y-4 bg-white p-5 rounded-2xl border border-[#e2dfd7] shadow-xs">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block font-bold text-[#1E2D4E] mb-1">Father's Details</label>
+                      <input type="text" value={editForm.fatherDetails} onChange={(e) => setEditForm({ ...editForm, fatherDetails: e.target.value })} className="input-modern" />
+                    </div>
+                    <div>
+                      <label className="block font-bold text-[#1E2D4E] mb-1">Mother's Details</label>
+                      <input type="text" value={editForm.motherDetails} onChange={(e) => setEditForm({ ...editForm, motherDetails: e.target.value })} className="input-modern" />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                      <label className="block font-bold text-[#1E2D4E] mb-1">Religion</label>
+                      <input type="text" value={editForm.religion} onChange={(e) => setEditForm({ ...editForm, religion: e.target.value })} className="input-modern" />
+                    </div>
+                    <div>
+                      <label className="block font-bold text-[#1E2D4E] mb-1">Caste / Category</label>
+                      <input type="text" value={editForm.caste} onChange={(e) => setEditForm({ ...editForm, caste: e.target.value })} className="input-modern" />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-[#1E2D4E] mb-1">Languages Known (comma separated)</label>
+                    <input type="text" placeholder="e.g. Kannada, English, Hindi" value={editForm.languagesKnown} onChange={(e) => setEditForm({ ...editForm, languagesKnown: e.target.value })} className="input-modern" />
+                  </div>
+
+                  <div>
+                    <label className="block font-bold text-[#1E2D4E] mb-1">HR &amp; Executive Remarks</label>
+                    <textarea
+                      rows={2}
+                      value={editForm.remarks}
+                      onChange={(e) => setEditForm({ ...editForm, remarks: e.target.value })}
+                      placeholder="Enter employee notes or remarks..."
+                      className="input-modern"
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Modal Sticky Footer */}
+            <div className="flex items-center justify-between p-4 bg-[#F9F7F4] border-t border-[#e2dfd7]">
+              <div className="text-[11px] text-[#777777] font-semibold">
+                Changes persist directly to MySQL Database.
+              </div>
+              <div className="flex items-center gap-2">
+                <button onClick={() => setEditModal({ open: false, emp: null })} className="px-4 py-2 rounded-xl border border-[#e2dfd7] bg-white font-extrabold text-xs text-[#555555]">
+                  Cancel
+                </button>
+                <button onClick={handleSaveEdit} disabled={saving} className="btn-primary text-xs shadow-md disabled:opacity-50 px-6 py-2">
+                  {saving ? 'Saving Details...' : 'Save Employee Details'}
+                </button>
+              </div>
             </div>
           </div>
         </div>
       )}
 
-      {/* 360° Complete Employee Detail Modal */}
+      {/* 360° Complete Employee Detail Drawer */}
       {drawerEmp && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-[#1E2D4E]/60 backdrop-blur-md transition-all animate-fade-in">
           <div className="relative w-full max-w-4xl max-h-[92vh] bg-white rounded-3xl shadow-2xl flex flex-col z-10 overflow-hidden border border-[#C9952A]/40">
@@ -756,11 +981,11 @@ export default function EmployeesPage() {
                     <StatusBadge status={drawerEmp.status || 'Joined'} size="sm" />
                   </div>
                   <div className="text-xs text-[#C9952A] font-extrabold font-mono mt-1.5 flex flex-wrap items-center gap-2">
-                    <span>{drawerEmp.appNo}</span>
+                    <span>{drawerEmp.appNo || drawerEmp.empNo}</span>
                     <span>•</span>
-                    <span className="text-white font-bold">{drawerEmp.desig || '—'}</span>
+                    <span className="text-white font-bold">{drawerEmp.desig || drawerEmp.designation || 'Staff'}</span>
                     <span>•</span>
-                    <span className="text-white/80 font-normal">DOJ: {drawerEmp.offeredDoj || drawerEmp.estDoj || drawerEmp.actualDoj || '—'}</span>
+                    <span className="text-white/80 font-normal">Section: {drawerEmp.section || 'Unassigned'}</span>
                   </div>
                 </div>
               </div>
@@ -805,7 +1030,7 @@ export default function EmployeesPage() {
                 <div className="space-y-4 animate-fade-in">
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     <div className="p-4 rounded-2xl bg-white border border-[#e2dfd7] shadow-xs space-y-1">
-                      <span className="text-[10px] uppercase font-black text-[#777777]">Offered Salary</span>
+                      <span className="text-[10px] uppercase font-black text-[#777777]">Base Monthly Salary</span>
                       <div className="text-base font-mono font-black text-emerald-800">
                         {drawerEmp.salary && drawerEmp.salary !== '—' ? `₹ ${drawerEmp.salary}` : '—'}
                       </div>
@@ -815,8 +1040,8 @@ export default function EmployeesPage() {
                       <div className="text-base font-extrabold text-[#1E2D4E]">{drawerEmp.offeredDoj || drawerEmp.estDoj || drawerEmp.actualDoj || '—'}</div>
                     </div>
                     <div className="p-4 rounded-2xl bg-white border border-[#e2dfd7] shadow-xs space-y-1">
-                      <span className="text-[10px] uppercase font-black text-[#777777]">Recruitment Source</span>
-                      <div className="text-base font-extrabold text-[#C9952A]">{drawerEmp.source || '—'}</div>
+                      <span className="text-[10px] uppercase font-black text-[#777777]">Assigned Section</span>
+                      <div className="text-base font-extrabold text-[#C9952A]">{drawerEmp.section || 'Unassigned'}</div>
                     </div>
                   </div>
 
@@ -824,7 +1049,7 @@ export default function EmployeesPage() {
                   <div className="p-5 rounded-2xl bg-white border border-[#e2dfd7] shadow-xs space-y-3">
                     <h4 className="font-extrabold text-[#1E2D4E] uppercase text-xs tracking-wider border-b border-[#e2dfd7] pb-2 flex items-center gap-2">
                       <DollarSign className="w-4 h-4 text-[#C9952A]" />
-                      <span>Compensation & Package Breakdown</span>
+                      <span>Compensation &amp; Package Breakdown</span>
                     </h4>
                     {(() => {
                       const sal = parseSalaryAndIncentive(drawerEmp.salary);
@@ -846,11 +1071,10 @@ export default function EmployeesPage() {
                       );
                     })()}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
-                      <div><span className="text-[#777777] block text-[10.5px]">Expected Salary</span><span className="font-extrabold text-[#1E2D4E] font-mono">{drawerEmp.expectedSalary ? `₹ ${drawerEmp.expectedSalary}` : '—'}</span></div>
-                      <div><span className="text-[#777777] block text-[10.5px]">Previous Salary</span><span className="font-extrabold text-[#1E2D4E] font-mono">{(drawerEmp.previousSalary || drawerEmp.currentSalary) ? `₹ ${drawerEmp.previousSalary || drawerEmp.currentSalary}` : '—'}</span></div>
-                      <div><span className="text-[#777777] block text-[10.5px]">Notice Period</span><span className="font-bold text-[#1E2D4E]">{drawerEmp.noticePeriod || '—'}</span></div>
                       <div><span className="text-[#777777] block text-[10.5px]">Allocated Department</span><span className="font-extrabold text-[#1E2D4E]">{drawerEmp.department || '—'}</span></div>
+                      <div><span className="text-[#777777] block text-[10.5px]">Floor Section</span><span className="font-extrabold text-[#C9952A]">{drawerEmp.section || 'Unassigned'}</span></div>
                       <div><span className="text-[#777777] block text-[10.5px]">Designation Role</span><span className="font-extrabold text-[#1E2D4E]">{drawerEmp.desig || drawerEmp.designation || '—'}</span></div>
+                      <div><span className="text-[#777777] block text-[10.5px]">Branch Location</span><span className="font-extrabold text-[#1E2D4E]">{drawerEmp.branch || 'BSC EXCLUSIVE DAVANAGERE'}</span></div>
                     </div>
                   </div>
 
@@ -866,32 +1090,12 @@ export default function EmployeesPage() {
                       <div><span className="text-[#777777] block text-[10.5px]">Previous Company / Employer</span><span className="font-extrabold text-[#1E2D4E]">{drawerEmp.previousCompany || drawerEmp.previous_company || '—'}</span></div>
                       <div><span className="text-[#777777] block text-[10.5px]">Previous Role / Designation</span><span className="font-extrabold text-[#1E2D4E]">{drawerEmp.previousDesignation || drawerEmp.previous_designation || '—'}</span></div>
                       <div><span className="text-[#777777] block text-[10.5px]">Highest Qualification</span><span className="font-extrabold text-[#1E2D4E]">{drawerEmp.qualification || '—'}</span></div>
-                      <div><span className="text-[#777777] block text-[10.5px]">Referrer Information</span><span className="font-bold text-[#1E2D4E]">{drawerEmp.referrer ? `${drawerEmp.referrer} (${drawerEmp.referrerEmpNo || ''})` : '—'}</span></div>
                     </div>
                     <div className="pt-2 border-t border-[#e2dfd7]/60">
-                      <span className="text-[#777777] block text-[10.5px] mb-1 font-bold uppercase">Shortlisting &amp; HR Remarks:</span>
+                      <span className="text-[#777777] block text-[10.5px] mb-1 font-bold uppercase">Executive HR Remarks:</span>
                       <div className="p-3 rounded-xl bg-[#F9F7F4] border border-[#e2dfd7] text-xs font-semibold text-[#1E2D4E] italic">
                         {drawerEmp.remarks || 'No remarks recorded.'}
                       </div>
-                    </div>
-                  </div>
-
-                  {/* Optional Interview Questions & Evaluation Section */}
-                  <div className="p-5 rounded-2xl bg-white border border-[#e2dfd7] shadow-xs space-y-3">
-                    <h4 className="font-extrabold text-[#1E2D4E] uppercase text-xs tracking-wider border-b border-[#e2dfd7] pb-2 flex items-center gap-2">
-                      <FileText className="w-4 h-4 text-[#C9952A]" />
-                      <span>Interview Questions &amp; Evaluation Notes (Optional)</span>
-                    </h4>
-                    <div className="space-y-2 text-xs">
-                      {drawerEmp.questionNotes || drawerEmp.evaluationNotes ? (
-                        <div className="p-3 rounded-xl bg-[#F9F7F4] border border-[#e2dfd7] text-[#1E2D4E] font-medium whitespace-pre-wrap">
-                          {drawerEmp.questionNotes || drawerEmp.evaluationNotes}
-                        </div>
-                      ) : (
-                        <div className="p-3 rounded-xl bg-[#F9F7F4] border border-[#e2dfd7] text-[#777777] text-center font-medium italic">
-                          No interview question evaluations recorded (Optional).
-                        </div>
-                      )}
                     </div>
                   </div>
                 </div>
@@ -915,10 +1119,6 @@ export default function EmployeesPage() {
                       <div><span className="text-[#777777] block text-[10.5px]">Religion</span><span className="font-extrabold text-[#1E2D4E]">{drawerEmp.religion || '—'}</span></div>
                       <div><span className="text-[#777777] block text-[10.5px]">Caste / Category</span><span className="font-extrabold text-[#1E2D4E]">{drawerEmp.caste || drawerEmp.religionCaste || drawerEmp.religion_caste || '—'}</span></div>
                     </div>
-                    <div className="pt-2 border-t border-[#e2dfd7]/60">
-                      <span className="text-[#777777] block text-[10.5px] mb-0.5">Complete Residential Address:</span>
-                      <span className="font-semibold text-[#1E2D4E] block leading-relaxed bg-[#F9F7F4] p-3 rounded-xl border border-[#e2dfd7]/50 mt-1">{drawerEmp.address || drawerEmp.cityState || '—'}</span>
-                    </div>
                   </div>
 
                   <div className="p-5 rounded-2xl bg-white border border-[#e2dfd7] shadow-xs space-y-4">
@@ -929,16 +1129,6 @@ export default function EmployeesPage() {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                       <div><span className="text-[#777777] block text-[10.5px]">Father's Details</span><span className="font-extrabold text-[#1E2D4E]">{drawerEmp.fatherDetails || drawerEmp.father_details || '—'}</span></div>
                       <div><span className="text-[#777777] block text-[10.5px]">Mother's Details</span><span className="font-extrabold text-[#1E2D4E]">{drawerEmp.motherDetails || drawerEmp.mother_details || '—'}</span></div>
-                    </div>
-                    <div className="pt-2 border-t border-[#e2dfd7]/60">
-                      <span className="text-[#777777] block text-[10.5px] mb-1.5">Languages Known:</span>
-                      <div className="flex flex-wrap gap-2">
-                        {(Array.isArray(drawerEmp.languagesKnown) ? drawerEmp.languagesKnown : (drawerEmp.languagesKnown ? JSON.parse(drawerEmp.languagesKnown) : [])).map((lang: string) => (
-                          <span key={lang} className="px-3 py-1 rounded-lg bg-[#F9F7F4] border border-[#e2dfd7] font-extrabold text-[11px] text-[#1E2D4E] shadow-2xs">
-                            {lang}
-                          </span>
-                        )) || '—'}
-                      </div>
                     </div>
                   </div>
                 </div>
@@ -954,13 +1144,11 @@ export default function EmployeesPage() {
                     </h4>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div><span className="text-[#777777] block text-[10.5px]">Finalized Department</span><span className="font-extrabold text-[#1E2D4E]">{drawerEmp.department || '—'}</span></div>
-                      <div><span className="text-[#777777] block text-[10.5px]">Branch / Store</span><span className="font-extrabold text-[#1E2D4E]">{drawerEmp.branch || '—'}</span></div>
+                      <div><span className="text-[#777777] block text-[10.5px]">Floor Section</span><span className="font-extrabold text-[#C9952A]">{drawerEmp.section || 'Unassigned'}</span></div>
+                      <div><span className="text-[#777777] block text-[10.5px]">Branch / Store</span><span className="font-extrabold text-[#1E2D4E]">{drawerEmp.branch || 'BSC EXCLUSIVE DAVANAGERE'}</span></div>
                       <div><span className="text-[#777777] block text-[10.5px]">Reporting Manager</span><span className="font-extrabold text-[#1E2D4E]">{drawerEmp.reportingManager || drawerEmp.reporting_manager || '—'}</span></div>
                       <div><span className="text-[#777777] block text-[10.5px]">Highest Qualification</span><span className="font-extrabold text-[#1E2D4E]">{drawerEmp.qualification || '—'}</span></div>
                       <div><span className="text-[#777777] block text-[10.5px]">Total Work Experience</span><span className="font-extrabold text-[#1E2D4E]">{drawerEmp.experience || '—'}</span></div>
-                      <div><span className="text-[#777777] block text-[10.5px]">Prior Work Experience</span><span className="font-extrabold text-[#1E2D4E]">{drawerEmp.retailExperience || drawerEmp.retail_experience || '—'}</span></div>
-                      <div><span className="text-[#777777] block text-[10.5px]">Previous Employer / Store</span><span className="font-extrabold text-[#1E2D4E]">{drawerEmp.previousCompany || drawerEmp.previous_company || '—'}</span></div>
-                      <div><span className="text-[#777777] block text-[10.5px]">Previous Role / Designation</span><span className="font-extrabold text-[#1E2D4E]">{drawerEmp.previousDesignation || drawerEmp.previous_designation || '—'}</span></div>
                     </div>
                   </div>
                 </div>
@@ -1015,32 +1203,24 @@ export default function EmployeesPage() {
             <div className="p-4 border-t border-[#e2dfd7] bg-[#F9F7F4] flex items-center justify-end gap-3 z-20 sticky bottom-0">
               <button
                 onClick={() => setDrawerEmp(null)}
-                className="px-5 py-2.5 rounded-xl border-2 border-[#e2dfd7] bg-white text-[#555555] font-extrabold hover:bg-black/5 transition-colors"
+                className="px-5 py-2.5 rounded-xl border-2 border-[#e2dfd7] bg-white text-[#555555] font-extrabold hover:bg-black/5 transition-colors text-xs"
               >
                 Close
               </button>
               {isAdmin && (
               <button
                 onClick={() => handleDeleteEmployee(drawerEmp.appNo, drawerEmp.name)}
-                className="px-5 py-2.5 rounded-xl bg-rose-600 text-white font-black hover:bg-rose-700 transition-colors shadow-md flex items-center gap-2"
+                className="px-5 py-2.5 rounded-xl bg-rose-600 text-white font-black hover:bg-rose-700 transition-colors shadow-md flex items-center gap-2 text-xs"
               >
-                <Trash2 className="w-4 h-4" /> Delete
+                <Trash2 className="w-4 h-4" /> Delete Record
               </button>
               )}
               {isAdmin && (
               <button
                 onClick={() => handleOpenEdit(drawerEmp)}
-                className="px-5 py-2.5 rounded-xl bg-[#1E2D4E] text-white font-black hover:bg-[#162340] transition-colors shadow-md flex items-center gap-2"
+                className="px-6 py-2.5 rounded-xl bg-[#1E2D4E] text-white font-black hover:bg-[#162340] transition-colors shadow-md flex items-center gap-2 text-xs"
               >
-                <Edit3 className="w-4 h-4" /> Quick Edit
-              </button>
-              )}
-              {isAdmin && (
-              <button
-                onClick={() => navigate(`/candidate-entry?edit=${drawerEmp.appNo}`)}
-                className="px-5 py-2.5 rounded-xl bg-[#C9952A] text-white font-black hover:bg-[#b07d20] transition-colors shadow-md flex items-center gap-2"
-              >
-                <ExternalLink className="w-4 h-4" /> Edit Full Profile
+                <Edit3 className="w-4 h-4" /> Edit Complete Information
               </button>
               )}
             </div>
