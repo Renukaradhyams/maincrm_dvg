@@ -24,14 +24,15 @@ class CandidateController {
 
   async updateCandidate(req, res) {
     try {
-      const { appNo, updates, doneBy } = req.body;
-      const user = doneBy || (req.user ? req.user.username : 'HR');
-      let result;
-      if (updates.isFullEdit) {
-        result = await candidateService.updateCandidateFull(appNo, updates, user);
-      } else {
-        result = await candidateService.updateCandidate(appNo, updates, user);
+      const appNo = req.params.appNo || req.body.appNo;
+      if (!appNo) {
+        return errorRes(res, 'Application number is required', ['appNo missing'], 400);
       }
+
+      const updates = req.body.updates ? req.body.updates : req.body;
+      const user = req.body.doneBy || (req.user ? req.user.username : 'HR');
+
+      const result = await candidateService.updateCandidateFull(appNo, updates, user);
       return res.json(result);
     } catch (err) {
       return errorRes(res, 'Failed to update candidate', [err.message], 500);

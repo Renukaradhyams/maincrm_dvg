@@ -351,33 +351,46 @@ class CandidateService {
   async updateCandidateFull(appNo, data, doneBy = 'HR') {
     const fields = [];
     const values = [];
-    const allowed = ['name','email','phone','address','gender','blood_group','dob','offered_doj','designation','department','branch','reporting_manager','remarks','qualification','experience','retail_experience','previous_company','previous_designation','aadhaar_number','father_details','mother_details','religion_caste','languages_known', 'resume_url', 'photo_url', 'aadhaar_url', 'current_salary', 'expected_salary', 'salary', 'status'];
+    const allowed = ['name','email','phone','address','gender','blood_group','dob','offered_doj','designation','department','section','branch','reporting_manager','remarks','qualification','experience','retail_experience','previous_company','previous_designation','aadhaar_number','father_details','mother_details','religion_caste','languages_known', 'resume_url', 'photo_url', 'aadhaar_url', 'current_salary', 'expected_salary', 'salary', 'status'];
     
     const map = {
-      blood_group: 'bloodGroup',
-      offered_doj: 'offeredDoj',
-      designation: 'desig',
-      reporting_manager: 'reportingManager',
-      retail_experience: 'retailExperience',
-      previous_company: 'previousCompany',
-      previous_designation: 'previousDesignation',
-      aadhaar_number: 'aadhaarNumber',
-      father_details: 'fatherDetails',
-      mother_details: 'motherDetails',
-      religion_caste: 'religionCaste',
-      languages_known: 'languagesKnown',
-      resume_url: 'resumeUrl',
-      photo_url: 'photoUrl',
-      aadhaar_url: 'aadhaarUrl',
-      current_salary: 'previousSalary',
-      expected_salary: 'expectedSalary'
+      blood_group: ['bloodGroup', 'blood_group'],
+      offered_doj: ['offeredDoj', 'estDoj', 'doj', 'offered_doj'],
+      designation: ['desig', 'designation', 'role'],
+      section: ['section'],
+      reporting_manager: ['reportingManager', 'reporting_manager'],
+      retail_experience: ['retailExperience', 'retail_experience'],
+      previous_company: ['previousCompany', 'previous_company'],
+      previous_designation: ['previousDesignation', 'previous_designation'],
+      aadhaar_number: ['aadhaarNumber', 'aadharNumber', 'aadhaar_number', 'aadhar_number'],
+      father_details: ['fatherDetails', 'father_details'],
+      mother_details: ['motherDetails', 'mother_details'],
+      religion_caste: ['religionCaste', 'caste', 'religion'],
+      languages_known: ['languagesKnown', 'languages_known'],
+      resume_url: ['resumeUrl', 'resume_url'],
+      photo_url: ['photoUrl', 'photo_url'],
+      aadhaar_url: ['aadhaarUrl', 'aadharUrl', 'aadhaar_url'],
+      current_salary: ['previousSalary', 'currentSalary', 'previous_salary'],
+      expected_salary: ['expectedSalary', 'expected_salary'],
+      name: ['name', 'fullName', 'candName'],
+      phone: ['phone', 'candPhone'],
+      email: ['email', 'candEmail'],
+      salary: ['salary', 'salaryOffered', 'offeredSalary', 'baseSalary']
     };
 
     for (const key of allowed) {
-      const dataKey = map[key] || key;
-      if (data[dataKey] !== undefined) {
+      const candidateKeys = map[key] || [key];
+      let foundValue = undefined;
+      for (const k of candidateKeys) {
+        if (data[k] !== undefined && data[k] !== null) {
+          foundValue = data[k];
+          break;
+        }
+      }
+
+      if (foundValue !== undefined) {
         fields.push(`${key} = ?`);
-        values.push(Array.isArray(data[dataKey]) ? JSON.stringify(data[dataKey]) : data[dataKey]);
+        values.push(Array.isArray(foundValue) ? JSON.stringify(foundValue) : foundValue);
       }
     }
 
@@ -386,11 +399,30 @@ class CandidateService {
       await pool.query(`UPDATE candidates SET ${fields.join(', ')} WHERE app_no = ?`, values);
     }
 
-    // Also sync selection_offers table if existing
-    if (data.department || data.desig || data.status || data.remarks) {
+    // Sync selection_offers table if existing
+    const salVal = data.salary || data.salaryOffered || data.offeredSalary;
+    const desigVal = data.desig || data.designation;
+    if (data.department || desigVal || data.status || data.remarks || salVal) {
       await pool.query(
-        `UPDATE selection_offers SET department = COALESCE(?, department), designation = COALESCE(?, designation), status = COALESCE(?, status), remarks = COALESCE(?, remarks), updated_at = NOW() WHERE app_no = ?`,
-        [data.department || null, data.desig || null, data.status || null, data.remarks || null, appNo]
+        `UPDATE selection_offers 
+         SET department = COALESCE(?, department), 
+             designation = COALESCE(?, designation), 
+             status = COALESCE(?, status), 
+             remarks = COALESCE(?, remarks), 
+             salary = COALESCE(?, salary),
+             updated_at = NOW() 
+         WHERE app_no = ?`,
+        [data.department || null, desigVal || null, data.status || null, data.remarks || null, salVal || null, appNo]
+      );
+    }
+
+    // Insert activity log
+    const [cand] = await pool.query(`SELECT id FROM candidates WHERE app_no = ?`, [appNo]);
+    if (cand.length > 0) {
+      await pool.query(
+        `INSERT INTO candidate_activities (candidate_id, app_no, action_type, icon, label, remarks, by_user, color)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        [cand[0].id, appNo, 'profile_edit', '✏️', `Profile updated by ${doneBy}`, data.remarks || 'Profile details saved', doneBy, 'gold']
       );
     }
 
