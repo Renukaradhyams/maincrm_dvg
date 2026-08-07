@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import ShortlistModal from '../components/ui/ShortlistModal';
 import CandidateProfileModal from '../components/ui/CandidateProfileModal';
+import { BSC_DEPARTMENTS, getSectionsForDepartment } from '../utils/bscDepartments';
 
 export default function CandidatesPage() {
   const navigate = useNavigate();
