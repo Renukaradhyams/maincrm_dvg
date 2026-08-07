@@ -657,17 +657,17 @@ export default function CandidatesPage() {
                             {c.status === 'New' && (
                               <button
                                 onClick={() => handleStatusChange('shortlist', c)}
-                                className="px-2.5 py-1 rounded-lg border border-[#1E2D4E] text-[#1E2D4E] font-bold hover:bg-[#1E2D4E] hover:text-white transition-all text-[11px]"
+                                className="px-3 py-1.5 rounded-xl bg-[#C9952A] text-white font-black hover:bg-[#b08123] transition-all text-[11px] shadow-xs flex items-center gap-1"
                               >
-                                Shortlist
+                                Shortlist & Offer Desk ↗
                               </button>
                             )}
-                            {(c.status === 'Shortlisted' || c.status === '1st Call' || c.status === '2nd Call') && (
+                            {c.status === 'Shortlisted' && (
                               <button
-                                onClick={() => handleStatusChange('schedule', c)}
-                                className="px-2.5 py-1 rounded-lg bg-[#1E2D4E] text-white font-bold hover:bg-[#162340] transition-all text-[11px] shadow-xs"
+                                onClick={() => navigate('/offer-desk')}
+                                className="px-3 py-1.5 rounded-xl bg-[#1E2D4E] text-white font-extrabold hover:bg-[#162340] transition-all text-[11px] shadow-xs flex items-center gap-1"
                               >
-                                📅 Schedule Interview
+                                📄 View on Offer Desk ↗
                               </button>
                             )}
                             <button
