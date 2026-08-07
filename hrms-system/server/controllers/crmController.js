@@ -171,6 +171,33 @@ exports.submitFeedback = async (req, res) => {
   }
 };
 
+exports.getFeedbackStats = async (req, res) => {
+  try {
+    const [totalRows] = await db.query('SELECT COUNT(*) as total, SUM(CASE WHEN isNegative = 1 THEN 1 ELSE 0 END) as negCount FROM Feedback');
+    const [queueRows] = await db.query('SELECT COUNT(*) as pendingCount FROM CallQueue WHERE status = "new"');
+    const [allQueueRows] = await db.query('SELECT COUNT(*) as totalQueueCount FROM CallQueue');
+
+    const total = totalRows[0]?.total || 0;
+    const neg = totalRows[0]?.negCount || 0;
+    const pos = total - neg;
+    const nps = total > 0 ? Math.round((pos / total) * 100) : 100;
+    const pendingCallQueue = queueRows[0]?.pendingCount || 0;
+    const totalCallQueue = allQueueRows[0]?.totalQueueCount || 0;
+
+    return res.json({
+      success: true,
+      totalFeedback: total,
+      positiveFeedback: pos,
+      negativeFeedback: neg,
+      npsScore: nps,
+      pendingCallQueue,
+      totalCallQueue
+    });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message });
+  }
+};
+
 exports.getCallQueue = async (req, res) => {
   try {
     const [rows] = await db.query('SELECT * FROM CallQueue ORDER BY createdAt DESC');

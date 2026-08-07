@@ -343,6 +343,7 @@ export const API = {
   async getFootfall(date?: string) { return apiFetch(`/crm/footfall${date ? `?date=${date}` : ''}`); },
   async upsertFootfall(payload: any) { return apiFetch('/crm/footfall/upsert', { method: 'POST', body: JSON.stringify(payload) }); },
   async getFeedbackQuestions() { return apiFetch('/crm/feedback-questions'); },
+  async getFeedbackStats() { return apiFetch('/crm/feedback-stats'); },
   async submitFeedback(payload: any) { return apiFetch('/crm/feedback', { method: 'POST', body: JSON.stringify(payload) }); },
   async getCallQueue() { return apiFetch('/crm/call-queue'); },
   async updateCallQueue(payload: any) { return apiFetch('/crm/call-queue/update', { method: 'POST', body: JSON.stringify(payload) }); },

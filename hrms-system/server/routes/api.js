@@ -129,6 +129,7 @@ router.get('/crm/footfall', crmController.getFootfall);
 router.post('/crm/footfall/upsert', crmController.upsertFootfall);
 
 router.get('/crm/feedback-questions', crmController.getFeedbackQuestions);
+router.get('/crm/feedback-stats', crmController.getFeedbackStats);
 router.post('/crm/feedback', crmController.submitFeedback);
 router.get('/crm/call-queue', crmController.getCallQueue);
 router.post('/crm/call-queue/update', crmController.updateCallQueue);

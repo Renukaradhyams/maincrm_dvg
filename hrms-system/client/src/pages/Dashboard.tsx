@@ -30,28 +30,33 @@ import {
   Target,
   DollarSign,
   Footprints,
-  MessageSquare
+  MessageSquare,
+  PhoneCall,
+  QrCode
 } from 'lucide-react';
 
 export default function DashboardPage() {
   const navigate = useNavigate();
   const [session, setSession] = useState<UserSession | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [activeRange, setActiveRange] = useState('all');
-  const [fromDate, setFromDate] = useState('');
-  const [toDate, setToDate] = useState('');
 
   // Employees & Operational Stats
   const [employees, setEmployees] = useState<any[]>([]);
   const [candidates, setCandidates] = useState<any[]>([]);
-  const [onboardingList, setOnboardingList] = useState<any[]>([]);
-  const [exitList, setExitList] = useState<any[]>([]);
-  const [sectionAllocations, setSectionAllocations] = useState<any[]>([]);
 
   // Operational Kiosk KPIs
   const [footfallToday, setFootfallToday] = useState(0);
-  const [npsScore, setNpsScore] = useState(100);
   const [openDivertsCount, setOpenDivertsCount] = useState(0);
+
+  // Feedback Collections Stats
+  const [feedbackStats, setFeedbackStats] = useState({
+    totalFeedback: 0,
+    positiveFeedback: 0,
+    negativeFeedback: 0,
+    npsScore: 100,
+    pendingCallQueue: 0,
+    totalCallQueue: 0
+  });
 
   // Search & Filter
   const [searchQuery, setSearchQuery] = useState('');
@@ -60,22 +65,23 @@ export default function DashboardPage() {
 
   const loadData = useCallback(async () => {
     try {
-      const [empData, candData, onbData, extData, secData, crmSettings, ffData, divData] = await Promise.all([
+      const [empData, candData, ffData, divData, fbData] = await Promise.all([
         API.getEmployees(),
         API.getCandidates({ limit: 500 }),
-        API.getOnboardingList().catch(() => ({ list: [] })),
-        API.getExitList().catch(() => ({ list: [] })),
-        API.getSectionAllocations().catch(() => ({ allocations: [] })),
-        API.getCrmSettings().catch(() => ({})),
         API.getFootfall().catch(() => ({ entries: [] })),
-        API.getDiverts().catch(() => ({ diverts: [] }))
+        API.getDiverts().catch(() => ({ diverts: [] })),
+        API.getFeedbackStats().catch(() => ({
+          totalFeedback: 0,
+          positiveFeedback: 0,
+          negativeFeedback: 0,
+          npsScore: 100,
+          pendingCallQueue: 0,
+          totalCallQueue: 0
+        }))
       ]);
 
       if (empData && empData.employees) setEmployees(empData.employees);
       if (candData && candData.candidates) setCandidates(candData.candidates);
-      if (onbData && onbData.list) setOnboardingList(onbData.list);
-      if (extData && extData.list) setExitList(extData.list);
-      if (secData && secData.allocations) setSectionAllocations(secData.allocations);
 
       if (ffData && ffData.entries) {
         const tot = ffData.entries.reduce((sum: number, e: any) => sum + (e.visitorsCount || e.visitors_count || 0), 0);
@@ -84,6 +90,16 @@ export default function DashboardPage() {
       if (divData && divData.diverts) {
         const openDivs = divData.diverts.filter((d: any) => d.status === 'Open' || d.status === 'In Progress').length;
         setOpenDivertsCount(openDivs);
+      }
+      if (fbData && fbData.success) {
+        setFeedbackStats({
+          totalFeedback: fbData.totalFeedback || 0,
+          positiveFeedback: fbData.positiveFeedback || 0,
+          negativeFeedback: fbData.negativeFeedback || 0,
+          npsScore: fbData.npsScore || 100,
+          pendingCallQueue: fbData.pendingCallQueue || 0,
+          totalCallQueue: fbData.totalCallQueue || 0
+        });
       }
     } catch (err: any) {
       console.warn('Dashboard data load warning:', err.message);
@@ -139,7 +155,8 @@ export default function DashboardPage() {
         (e.empNo && e.empNo.toLowerCase().includes(q)) ||
         (e.appNo && e.appNo.toLowerCase().includes(q)) ||
         (e.department && e.department.toLowerCase().includes(q)) ||
-        (e.desig && e.desig.toLowerCase().includes(q))
+        (e.desig && e.desig.toLowerCase().includes(q)) ||
+        (e.section && e.section.toLowerCase().includes(q))
       );
     }
     return list;
@@ -176,9 +193,9 @@ export default function DashboardPage() {
               </div>
               <h2 className="text-xl font-black text-[#1E2D4E] tracking-tight flex items-center gap-2">
                 <BarChart3 className="w-5 h-5 text-[#C9952A]" />
-                <span>Employee Maintenance &amp; Floor Operations</span>
+                <span>Employee Maintenance &amp; Store Feedback Analytics</span>
               </h2>
-              <p className="text-xs text-[#666666] font-medium mt-0.5">Real-time active workforce register, section allocations, orientation &amp; daily store metrics.</p>
+              <p className="text-xs text-[#666666] font-medium mt-0.5">Active workforce directory, customer feedback collections &amp; daily store operations.</p>
             </div>
 
             <div className="flex flex-wrap items-center gap-2">
@@ -190,16 +207,16 @@ export default function DashboardPage() {
                 <span>Mark Attendance</span>
               </button>
               <button 
-                onClick={() => navigate('/section-allocation')} 
+                onClick={() => navigate('/feedback-list')} 
                 className="btn-primary text-xs px-4 py-2 flex items-center gap-1.5 shadow-sm"
               >
-                <Building2 className="w-4 h-4" />
-                <span>Section Allocations</span>
+                <MessageSquare className="w-4 h-4" />
+                <span>Feedback Call Queue</span>
               </button>
             </div>
           </div>
 
-          {/* Primary Workforce Metric Cards Grid - Row 1 */}
+          {/* Primary Metric Cards Grid - Row 1 */}
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <MetricCard
               title="Active Store Staff"
@@ -210,28 +227,28 @@ export default function DashboardPage() {
               onClick={() => navigate('/employees')}
             />
             <MetricCard
-              title="Staff Onboarding"
-              value={onboardingList.length}
-              subtext="Employees in 30-day orientation"
-              icon={FileCheck}
+              title="Customer Feedbacks"
+              value={feedbackStats.totalFeedback}
+              subtext={`Positive: ${feedbackStats.positiveFeedback} • Neg: ${feedbackStats.negativeFeedback}`}
+              icon={MessageSquare}
               color="gold"
-              onClick={() => navigate('/onboarding')}
+              onClick={() => navigate('/feedback-list')}
             />
             <MetricCard
-              title="Exit Clearances"
-              value={exitList.length}
-              subtext="Staff offboarding / resignation"
-              icon={LogOut}
+              title="Pending Call Queue"
+              value={feedbackStats.pendingCallQueue}
+              subtext="Negative feedback calls awaiting action"
+              icon={PhoneCall}
               color="rose"
-              onClick={() => navigate('/exit')}
+              onClick={() => navigate('/feedback-list')}
             />
             <MetricCard
-              title="Floor Allocations"
-              value={sectionAllocations.length}
-              subtext="Employees assigned to store sections"
-              icon={Building2}
+              title="Satisfaction NPS"
+              value={`${feedbackStats.npsScore}%`}
+              subtext="Customer feedback rating index"
+              icon={Sparkles}
               color="teal"
-              onClick={() => navigate('/section-allocation')}
+              onClick={() => navigate('/feedback-list')}
             />
           </div>
 
@@ -246,14 +263,6 @@ export default function DashboardPage() {
               onClick={() => navigate('/footfall')}
             />
             <MetricCard
-              title="Satisfaction NPS"
-              value={`${npsScore}%`}
-              subtext="Customer feedback rating index"
-              icon={MessageSquare}
-              color="indigo"
-              onClick={() => navigate('/feedback-list')}
-            />
-            <MetricCard
               title="Sourcing Diverts"
               value={openDivertsCount}
               subtext="Active merchandise requests"
@@ -262,12 +271,20 @@ export default function DashboardPage() {
               onClick={() => navigate('/divert')}
             />
             <MetricCard
-              title="Candidate Pool"
+              title="Candidate Applicants"
               value={candidates.length}
-              subtext="Registered candidate applicants"
+              subtext="Occasional hiring applicant pool"
               icon={UserPlus}
               color="gold"
               onClick={() => navigate('/candidates')}
+            />
+            <MetricCard
+              title="Feedback QR Portal"
+              value="Scan QR"
+              subtext="Display customer survey tablet QR"
+              icon={QrCode}
+              color="indigo"
+              onClick={() => navigate('/feedback-qr')}
             />
           </div>
 
@@ -330,10 +347,11 @@ export default function DashboardPage() {
               <div className="space-y-2.5">
                 {[
                   { label: 'Employee Register', path: '/employees', icon: Users, desc: 'Manage full staff directory & profiles' },
+                  { label: 'Feedback Call Queue', path: '/feedback-list', icon: MessageSquare, desc: 'View customer surveys & call queue' },
                   { label: 'Section Allocation', path: '/section-allocation', icon: Building2, desc: 'Assign staff to store floor sections' },
                   { label: 'Staff Attendance', path: '/attendance', icon: CalendarCheck, desc: 'Mark daily attendance register' },
                   { label: 'Cash Settlement Desk', path: '/cash-settlement', icon: DollarSign, desc: 'POS daily cash counter settlement' },
-                  { label: 'Candidate Recruitment', path: '/candidates', icon: UserPlus, desc: 'View applicant pool for new hiring' }
+                  { label: 'Candidate Applicants', path: '/candidates', icon: UserPlus, desc: 'View applicant pool for new hiring' }
                 ].map((item) => {
                   const Icon = item.icon;
                   return (
@@ -372,7 +390,7 @@ export default function DashboardPage() {
                   <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
                   <input
                     type="text"
-                    placeholder="Search employee by name, ID or designation..."
+                    placeholder="Search employee by name, ID, section..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                     className="input-modern pl-9 pr-4 text-xs py-2 w-full sm:w-64"
@@ -392,7 +410,7 @@ export default function DashboardPage() {
                     <th className="py-3 px-4">Employee Name</th>
                     <th className="py-3 px-4">Designation</th>
                     <th className="py-3 px-4">Department</th>
-                    <th className="py-3 px-4">Gender</th>
+                    <th className="py-3 px-4">Section</th>
                     <th className="py-3 px-4">Joining Date</th>
                     <th className="py-3 px-4 text-right">Status</th>
                   </tr>
@@ -404,8 +422,8 @@ export default function DashboardPage() {
                         <td className="py-3.5 px-4 font-mono font-extrabold text-[#1E2D4E]">{emp.empNo || emp.appNo}</td>
                         <td className="py-3.5 px-4 font-extrabold text-[#1E2D4E]">{emp.name || emp.fullName}</td>
                         <td className="py-3.5 px-4 text-[#555555] font-semibold">{emp.desig || emp.designation || 'Staff'}</td>
-                        <td className="py-3.5 px-4 text-[#555555] font-semibold">{emp.department || 'Retail Floor'}</td>
-                        <td className="py-3.5 px-4 text-[#555555] capitalize">{emp.gender || '—'}</td>
+                        <td className="py-3.5 px-4 text-[#555555] font-semibold">{emp.department || '—'}</td>
+                        <td className="py-3.5 px-4 text-[#C9952A] font-extrabold">{emp.section || 'Unassigned'}</td>
                         <td className="py-3.5 px-4 text-[#555555] font-mono">{emp.actualDoj || emp.offeredDoj || emp.date || '—'}</td>
                         <td className="py-3.5 px-4 text-right">
                           <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-800">
