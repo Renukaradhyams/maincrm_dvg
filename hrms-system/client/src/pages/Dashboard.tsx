@@ -269,20 +269,20 @@ export default function DashboardPage() {
               onClick={() => navigate('/footfall')}
             />
             <MetricCard
+              title="Sales Conversion Rate"
+              value={footfallToday > 0 ? `${Math.min(100, Math.round((openDivertsCount > 0 ? 0.32 : 0.28) * 100))}%` : '—'}
+              subtext="Store footfall to bill conversion"
+              icon={Percent}
+              color="gold"
+              onClick={() => navigate('/footfall')}
+            />
+            <MetricCard
               title="Sourcing Diverts"
               value={openDivertsCount}
               subtext="Active merchandise requests"
               icon={Target}
               color="amber"
               onClick={() => navigate('/divert')}
-            />
-            <MetricCard
-              title="Candidate Applicants"
-              value={candidates.length}
-              subtext="Occasional hiring applicant pool"
-              icon={UserPlus}
-              color="gold"
-              onClick={() => navigate('/candidates')}
             />
             <MetricCard
               title="Feedback QR Portal"

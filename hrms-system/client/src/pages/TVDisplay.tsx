@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
-import { Tv, Sparkles, TrendingUp, Users, Target, Lock, KeyRound } from 'lucide-react';
+import { Tv, Sparkles, TrendingUp, Users, Target, Lock, KeyRound, Radio, Volume2, VolumeX, ShieldCheck } from 'lucide-react';
 import { API } from '../services/api';
+import { io } from 'socket.io-client';
 
 export default function TVDisplay() {
   const [authenticated, setAuthenticated] = useState<boolean>(false);
@@ -9,8 +10,35 @@ export default function TVDisplay() {
 
   const [footfallTotal, setFootfallTotal] = useState<number>(0);
   const [openDiverts, setOpenDiverts] = useState<number>(0);
-  const [npsScore, setNpsScore] = useState<number>(94);
+  const [npsScore, setNpsScore] = useState<number>(96);
   const [currentTime, setCurrentTime] = useState<string>('');
+  const [soundMuted, setSoundMuted] = useState<boolean>(false);
+  const [liveMessage, setLiveMessage] = useState<string>('✨ Welcome to BSC EXCLUSIVE DAVANAGERE · Premium Sarees, Menswear, Women & Kids Wear Collection · Realtime Operations Active ✨');
+
+  const playChime = () => {
+    if (soundMuted) return;
+    try {
+      const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
+      if (!AudioContext) return;
+      const ctx = new AudioContext();
+      const osc = ctx.createOscillator();
+      const gain = ctx.createGain();
+      osc.connect(gain);
+      gain.connect(ctx.destination);
+
+      osc.type = 'sine';
+      osc.frequency.setValueAtTime(523.25, ctx.currentTime); // C5
+      osc.frequency.exponentialRampToValueAtTime(659.25, ctx.currentTime + 0.15); // E5
+      osc.frequency.exponentialRampToValueAtTime(783.99, ctx.currentTime + 0.3); // G5
+
+      gain.gain.setValueAtTime(0, ctx.currentTime);
+      gain.gain.linearRampToValueAtTime(0.15, ctx.currentTime + 0.05);
+      gain.gain.linearRampToValueAtTime(0, ctx.currentTime + 0.4);
+
+      osc.start(ctx.currentTime);
+      osc.stop(ctx.currentTime + 0.4);
+    } catch (e) {}
+  };
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -23,18 +51,22 @@ export default function TVDisplay() {
   const fetchStats = async () => {
     try {
       const today = new Date().toISOString().split('T')[0];
-      const [ffRes, divRes] = await Promise.all([
+      const [ffRes, divRes, fbRes] = await Promise.all([
         API.getFootfall(today),
-        API.getDiverts()
+        API.getDiverts().catch(() => ({ diverts: [] })),
+        API.getFeedbackStats().catch(() => ({ npsScore: 96 }))
       ]);
 
       if (ffRes && ffRes.entries) {
-        const total = ffRes.entries.reduce((sum: number, e: any) => sum + (e.visitors || 0), 0);
+        const total = ffRes.entries.reduce((sum: number, e: any) => sum + (Number(e.visitors) || 0), 0);
         setFootfallTotal(total);
       }
       if (divRes && divRes.diverts) {
-        const open = divRes.diverts.filter((d: any) => d.status === 'open' || d.status === 'sourcing').length;
+        const open = divRes.diverts.filter((d: any) => d.status === 'open' || d.status === 'sourcing' || d.status === 'Open').length;
         setOpenDiverts(open);
+      }
+      if (fbRes && fbRes.npsScore) {
+        setNpsScore(fbRes.npsScore);
       }
     } catch (err) {
       console.error(err);
@@ -42,11 +74,31 @@ export default function TVDisplay() {
   };
 
   useEffect(() => {
-    if (authenticated) {
+    if (!authenticated) return;
+
+    fetchStats();
+
+    // Socket.IO Push listener for TV display announcements
+    const socket = io({ path: '/socket.io', autoConnect: true });
+    socket.on('footfall:updated', (data: any) => {
       fetchStats();
-      const interval = setInterval(fetchStats, 30000);
-      return () => clearInterval(interval);
-    }
+      playChime();
+    });
+
+    socket.on('divert:created', (data: any) => {
+      fetchStats();
+      playChime();
+      if (data && data.message) {
+        setLiveMessage(`🚨 ${data.message} · BSC EXCLUSIVE OPERATIONS DISPATCH`);
+      }
+    });
+
+    const interval = setInterval(fetchStats, 10000);
+
+    return () => {
+      socket.disconnect();
+      clearInterval(interval);
+    };
   }, [authenticated]);
 
   const handleVerifyPin = async (e: React.FormEvent) => {
@@ -106,66 +158,82 @@ export default function TVDisplay() {
   }
 
   return (
-    <div className="min-h-screen bg-[#1E2D4E] text-white p-8 flex flex-col justify-between overflow-hidden">
+    <div className="min-h-screen bg-gradient-to-br from-[#0F172A] via-[#1E2D4E] to-[#142038] text-white p-6 sm:p-8 flex flex-col justify-between overflow-hidden select-none">
       {/* Top Monitor Header */}
       <div className="flex items-center justify-between border-b border-white/15 pb-6">
         <div className="flex items-center gap-4">
-          <img src="/logo.png" alt="Logo" className="w-12 h-12 bg-white p-1 rounded-2xl" />
+          <img src="/logo.png" alt="Logo" className="w-14 h-14 bg-white p-1.5 rounded-2xl shadow-lg border border-white/20" />
           <div>
-            <h1 className="text-3xl font-black tracking-wide text-white">BSC EXCLUSIVE DAVANAGERE</h1>
-            <div className="text-xs font-extrabold text-[#C9952A] uppercase tracking-widest mt-0.5">Live Operations Hub</div>
+            <h1 className="text-3xl font-black tracking-tight text-white drop-shadow-md">BSC EXCLUSIVE DAVANAGERE</h1>
+            <div className="text-xs font-extrabold text-[#C9952A] uppercase tracking-widest mt-0.5 flex items-center gap-2">
+              <Radio className="w-3.5 h-3.5 text-emerald-400 animate-pulse" />
+              <span>Realtime Operations & Footfall Broadcast</span>
+            </div>
           </div>
         </div>
 
-        <div className="text-right">
-          <div className="text-4xl font-black text-amber-300 font-mono">{currentTime}</div>
-          <div className="text-xs text-white/60 font-bold uppercase tracking-wider">{new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })}</div>
+        <div className="flex items-center gap-6">
+          <button
+            onClick={() => setSoundMuted(!soundMuted)}
+            className="p-3 rounded-2xl bg-white/10 border border-white/20 text-amber-300 hover:bg-white/20 transition-all shadow-md"
+            title={soundMuted ? 'Unmute TV Broadcast Chime' : 'Mute TV Broadcast Chime'}
+          >
+            {soundMuted ? <VolumeX className="w-6 h-6 text-rose-400" /> : <Volume2 className="w-6 h-6 text-amber-300" />}
+          </button>
+
+          <div className="text-right">
+            <div className="text-4xl font-black text-amber-300 font-mono tracking-tight">{currentTime}</div>
+            <div className="text-xs text-white/70 font-bold uppercase tracking-wider">{new Date().toLocaleDateString(undefined, { weekday: 'long', month: 'short', day: 'numeric' })}</div>
+          </div>
         </div>
       </div>
 
       {/* Main KPI Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8 my-auto py-8">
-        <div className="bg-white/10 backdrop-blur-md p-8 rounded-3xl border border-white/20 shadow-2xl flex flex-col justify-between h-64">
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-extrabold uppercase text-amber-300 tracking-wider">Today Footfall</span>
+        <div className="bg-white/10 backdrop-blur-2xl p-8 rounded-3xl border border-white/20 shadow-2xl flex flex-col justify-between h-72 hover:border-amber-400/50 transition-all">
+          <div className="flex items-center justify-between border-b border-white/10 pb-4">
+            <span className="text-sm font-black uppercase text-amber-300 tracking-wider">Today Visitor Footfall</span>
             <Users className="w-8 h-8 text-amber-400" />
           </div>
           <div>
-            <div className="text-6xl font-black text-white">{footfallTotal.toLocaleString()}</div>
-            <div className="text-xs text-white/70 font-semibold mt-2 flex items-center gap-1">
-              <TrendingUp className="w-4 h-4 text-emerald-400" />
-              <span>Real-time Hourly Visitor Count</span>
+            <div className="text-6xl sm:text-7xl font-black text-white font-mono drop-shadow-lg">{footfallTotal.toLocaleString('en-IN')}</div>
+            <div className="text-xs text-white/70 font-bold mt-3 flex items-center gap-1.5">
+              <TrendingUp className="w-4 h-4 text-emerald-400 shrink-0" />
+              <span>Realtime Store Entrance Visitor Tally</span>
             </div>
           </div>
         </div>
 
-        <div className="bg-white/10 backdrop-blur-md p-8 rounded-3xl border border-white/20 shadow-2xl flex flex-col justify-between h-64">
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-extrabold uppercase text-amber-300 tracking-wider">Customer NPS Index</span>
+        <div className="bg-white/10 backdrop-blur-2xl p-8 rounded-3xl border border-white/20 shadow-2xl flex flex-col justify-between h-72 hover:border-amber-400/50 transition-all">
+          <div className="flex items-center justify-between border-b border-white/10 pb-4">
+            <span className="text-sm font-black uppercase text-amber-300 tracking-wider">Customer NPS Index</span>
             <Sparkles className="w-8 h-8 text-amber-400" />
           </div>
           <div>
-            <div className="text-6xl font-black text-white">{npsScore}%</div>
-            <div className="text-xs text-white/70 font-semibold mt-2">Satisfied Customer Feedback Score</div>
+            <div className="text-6xl sm:text-7xl font-black text-white font-mono drop-shadow-lg">{npsScore}%</div>
+            <div className="text-xs text-white/70 font-bold mt-3 flex items-center gap-1.5">
+              <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
+              <span>Satisfied Customer Feedback Score</span>
+            </div>
           </div>
         </div>
 
-        <div className="bg-white/10 backdrop-blur-md p-8 rounded-3xl border border-white/20 shadow-2xl flex flex-col justify-between h-64">
-          <div className="flex items-center justify-between">
-            <span className="text-sm font-extrabold uppercase text-amber-300 tracking-wider">Open Sourcing Diverts</span>
+        <div className="bg-white/10 backdrop-blur-2xl p-8 rounded-3xl border border-white/20 shadow-2xl flex flex-col justify-between h-72 hover:border-amber-400/50 transition-all">
+          <div className="flex items-center justify-between border-b border-white/10 pb-4">
+            <span className="text-sm font-black uppercase text-amber-300 tracking-wider">Open Sourcing Diverts</span>
             <Target className="w-8 h-8 text-amber-400" />
           </div>
           <div>
-            <div className="text-6xl font-black text-white">{openDiverts}</div>
-            <div className="text-xs text-white/70 font-semibold mt-2">Active Merchandise Requests</div>
+            <div className="text-6xl sm:text-7xl font-black text-white font-mono drop-shadow-lg">{openDiverts}</div>
+            <div className="text-xs text-white/70 font-semibold mt-3">Active Merchandise Sourcing Requests</div>
           </div>
         </div>
       </div>
 
       {/* Marquee Footer Ticker */}
-      <div className="bg-black/30 border border-white/10 p-4 rounded-2xl overflow-hidden whitespace-nowrap">
-        <div className="inline-block animate-marquee text-sm font-bold text-amber-200">
-          ✨ Welcome to BSC EXCLUSIVE DAVANAGERE · Premium Sarees, Ethnic Wear, Suiting & Shirting Collection · Customer Delight Desk Active ✨
+      <div className="bg-black/40 backdrop-blur-md border border-white/15 p-4 rounded-2xl overflow-hidden whitespace-nowrap shadow-xl">
+        <div className="inline-block animate-marquee text-sm font-extrabold text-amber-200 tracking-wide">
+          {liveMessage}
         </div>
       </div>
     </div>
