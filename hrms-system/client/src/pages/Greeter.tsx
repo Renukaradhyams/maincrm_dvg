@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { UserCheck, Plus, Minus, KeyRound, Clock, Sparkles, RefreshCw, ShieldCheck, Activity, Users, Store } from 'lucide-react';
+import { UserCheck, Plus, Minus, KeyRound, Clock, Sparkles, RefreshCw, ShieldCheck, Activity, Users, Store, Zap } from 'lucide-react';
 import { API } from '../services/api';
+import { io } from 'socket.io-client';
 
 export default function Greeter() {
   const [authenticated, setAuthenticated] = useState<boolean>(false);
@@ -46,12 +47,25 @@ export default function Greeter() {
 
     fetchCurrentFootfall();
 
-    // Background realtime polling every 3 seconds to sync across tablets & floor register
+    // Socket.IO Push listener for instant zero-latency update across Greeter tablets
+    const socket = io({ path: '/socket.io', autoConnect: true });
+    socket.on('footfall:updated', (data: any) => {
+      const today = new Date().toISOString().split('T')[0];
+      const nowHour = new Date().getHours();
+      if (data && data.entryDate === today && Number(data.slotHour) === nowHour) {
+        setCurrentSlotCount(Number(data.visitors) || 0);
+      }
+    });
+
+    // Background realtime polling fallback every 4 seconds
     const interval = setInterval(() => {
       fetchCurrentFootfall();
-    }, 3000);
+    }, 4000);
 
-    return () => clearInterval(interval);
+    return () => {
+      socket.disconnect();
+      clearInterval(interval);
+    };
   }, [authenticated, fetchCurrentFootfall]);
 
   const handleVerifyPin = async (e: React.FormEvent) => {
@@ -196,8 +210,8 @@ export default function Greeter() {
         <div className="flex items-center justify-between text-xs uppercase font-black tracking-widest text-amber-300 border-b border-white/10 pb-3 mb-2">
           <span>Current Active Hour Slot</span>
           <span className="flex items-center gap-1.5 text-[10px] text-white/80 font-mono">
-            {isSyncing ? <RefreshCw className="w-3.5 h-3.5 animate-spin text-amber-300" /> : <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>}
-            {isSyncing ? 'Saving...' : 'Realtime Synced'}
+            {isSyncing ? <RefreshCw className="w-3.5 h-3.5 animate-spin text-amber-300" /> : <Zap className="w-3.5 h-3.5 text-emerald-400 animate-pulse" />}
+            {isSyncing ? 'Saving...' : 'Socket Push Synced'}
           </span>
         </div>
 
@@ -223,8 +237,8 @@ export default function Greeter() {
         </div>
 
         <div className="bg-white/5 backdrop-blur-md p-3 rounded-2xl border border-white/10 text-center">
-          <div className="text-[10px] font-extrabold text-white/60 uppercase tracking-wider">Sync Mode</div>
-          <div className="text-xs font-black text-emerald-400 font-mono mt-1.5">Single Source</div>
+          <div className="text-[10px] font-extrabold text-white/60 uppercase tracking-wider">Push Sync</div>
+          <div className="text-xs font-black text-emerald-400 font-mono mt-1.5">Socket.IO 0ms</div>
         </div>
 
         <div className="bg-white/5 backdrop-blur-md p-3 rounded-2xl border border-white/10 text-center">

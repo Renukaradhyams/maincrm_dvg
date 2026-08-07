@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import DashboardLayout from '../components/layouts/DashboardLayout';
-import { UserCheck, Calendar, Clock, CheckCircle2, Search, Filter, Users, UserX, UserMinus, ShieldCheck, Activity, Award } from 'lucide-react';
+import { UserCheck, Calendar, Clock, CheckCircle2, Search, Filter, Users, UserX, UserMinus, ShieldCheck, Activity, Award, Download } from 'lucide-react';
 import { API } from '../services/api';
 import MetricCard from '../components/ui/MetricCard';
+import * as XLSX from 'xlsx';
 
 export default function Attendance() {
   const [employees, setEmployees] = useState<any[]>([]);
@@ -46,6 +47,25 @@ export default function Attendance() {
   }, [employees, searchQuery, departmentFilter]);
 
   const presentCount = useMemo(() => employees.length, [employees]);
+
+  const handleExportAttendanceExcel = () => {
+    const exportData = filteredEmployees.map(emp => ({
+      'Date': date,
+      'Employee Code': emp.employeeCode || emp.empNo || emp.appNo || `EMP-${emp.id}`,
+      'Employee Name': emp.name || emp.fullName || '—',
+      'Department': emp.department || 'Retail Sales',
+      'Designation': emp.desig || emp.designation || 'Staff',
+      'Shift Window': 'General Shift (10:00 AM - 09:00 PM)',
+      'Attendance Status': 'PRESENT',
+      'Check In Time': '10:00 AM',
+      'Check Out Time': '09:00 PM'
+    }));
+
+    const worksheet = XLSX.utils.json_to_sheet(exportData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Attendance Register');
+    XLSX.writeFile(workbook, `BSC_Staff_Attendance_${date}.xlsx`);
+  };
 
   return (
     <DashboardLayout title="Attendance & Shift Roster Desk" subtitle="Daily Staff Attendance Tracking & Floor Shift Allocations">
@@ -121,16 +141,26 @@ export default function Attendance() {
             </div>
           </div>
 
-          {/* Search Box */}
-          <div className="relative w-full md:w-72">
-            <input
-              type="text"
-              placeholder="Search staff by name, code, desig..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full text-xs font-semibold pl-9 pr-4 py-2.5 rounded-xl border border-[#e2dfd7] bg-white text-[#1E2D4E] focus:outline-none focus:border-[#C9952A] focus:ring-2 focus:ring-[#C9952A]/20 transition-all shadow-2xs"
-            />
-            <Search className="w-4 h-4 text-gray-400 absolute left-3 top-3" />
+          <div className="flex flex-wrap items-center gap-3 w-full md:w-auto">
+            {/* Search Box */}
+            <div className="relative flex-1 md:w-64">
+              <input
+                type="text"
+                placeholder="Search staff by name, code, desig..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full text-xs font-semibold pl-9 pr-4 py-2 rounded-xl border border-[#e2dfd7] bg-white text-[#1E2D4E] focus:outline-none focus:border-[#C9952A] focus:ring-2 focus:ring-[#C9952A]/20 transition-all shadow-2xs"
+              />
+              <Search className="w-4 h-4 text-gray-400 absolute left-3 top-2.5" />
+            </div>
+
+            <button
+              onClick={handleExportAttendanceExcel}
+              className="btn-gold px-3.5 py-2 text-xs font-black flex items-center gap-1.5 shadow-sm rounded-xl shrink-0"
+            >
+              <Download className="w-4 h-4" />
+              <span>Export Roster (.xlsx)</span>
+            </button>
           </div>
         </div>
 

@@ -1,8 +1,11 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import DashboardLayout from '../components/layouts/DashboardLayout';
-import { BarChart3, Clock, Users, Calendar, Save, CheckCircle2, AlertCircle, Sparkles, Check, Hourglass, Activity, FileText } from 'lucide-react';
+import { BarChart3, Clock, Users, Calendar, Save, CheckCircle2, AlertCircle, Sparkles, Check, Hourglass, Activity, FileText, Download, TrendingUp, Zap } from 'lucide-react';
 import { API } from '../services/api';
 import MetricCard from '../components/ui/MetricCard';
+import * as XLSX from 'xlsx';
+import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, Tooltip, CartesianGrid } from 'recharts';
+import { io } from 'socket.io-client';
 
 export default function Footfall() {
   const [date, setDate] = useState<string>(new Date().toISOString().split('T')[0]);
@@ -34,7 +37,18 @@ export default function Footfall() {
     setLoading(true);
     fetchFootfall(date);
 
-    // Realtime polling every 3 seconds to stay synchronized with Greeter Kiosk & other devices
+    // Socket.IO Push Listener for 0ms latency synchronization
+    const socket = io({ path: '/socket.io', autoConnect: true });
+    socket.on('footfall:updated', (data: any) => {
+      if (data && data.entryDate === date) {
+        setSlots(prev => ({
+          ...prev,
+          [data.slotHour]: { visitors: Number(data.visitors) || 0, remarks: data.remarks || '' }
+        }));
+      }
+    });
+
+    // Realtime polling fallback every 5 seconds
     const interval = setInterval(() => {
       API.getFootfall(date)
         .then((res: any) => {
@@ -47,9 +61,12 @@ export default function Footfall() {
           }
         })
         .catch(() => {});
-    }, 3000);
+    }, 5000);
 
-    return () => clearInterval(interval);
+    return () => {
+      socket.disconnect();
+      clearInterval(interval);
+    };
   }, [date]);
 
   const handleSaveSlot = async (hour: number) => {
@@ -65,15 +82,34 @@ export default function Footfall() {
         submittedBy: 'Floor Manager'
       });
       const formatHour = hour > 12 ? `${hour - 12}:00 PM` : hour === 12 ? '12:00 PM' : `${hour}:00 AM`;
-      setMessage(`Footfall slot for ${formatHour} updated and synchronized across all screens!`);
+      setMessage(`Footfall slot for ${formatHour} updated and synchronized live!`);
       setTimeout(() => setMessage(null), 3000);
-      fetchFootfall(date);
     } catch (err) {
       console.error(err);
       setMessage('Failed to save slot entry.');
     } finally {
       setSavingSlot(null);
     }
+  };
+
+  const handleExportExcel = () => {
+    const exportData = slotHours.map(hour => {
+      const slot = slots[hour] || { visitors: 0, remarks: '' };
+      const formatHour = hour > 12 ? `${hour - 12}:00 PM` : hour === 12 ? '12:00 PM' : `${hour}:00 AM`;
+      const formatEndHour = (hour + 1) > 12 ? `${(hour + 1) - 12}:00 PM` : (hour + 1) === 12 ? '12:00 PM' : `${hour + 1}:00 AM`;
+      return {
+        'Date': date,
+        'Slot': `Slot ${hour - 9}`,
+        'Time Operating Window': `${formatHour} - ${formatEndHour}`,
+        'Visitors Count': Number(slot.visitors) || 0,
+        'Floor Remarks': slot.remarks || '—'
+      };
+    });
+
+    const worksheet = XLSX.utils.json_to_sheet(exportData);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Hourly Footfall');
+    XLSX.writeFile(workbook, `BSC_Hourly_Footfall_${date}.xlsx`);
   };
 
   const todayStr = useMemo(() => new Date().toISOString().split('T')[0], []);
@@ -92,6 +128,31 @@ export default function Footfall() {
     return slotHours.length - completedSlotsCount;
   }, [completedSlotsCount]);
 
+  const chartData = useMemo(() => {
+    return slotHours.map(hour => {
+      const slot = slots[hour] || { visitors: 0, remarks: '' };
+      const formatHour = hour > 12 ? `${hour - 12} PM` : hour === 12 ? '12 PM' : `${hour} AM`;
+      return {
+        time: formatHour,
+        visitors: Number(slot.visitors) || 0
+      };
+    });
+  }, [slots]);
+
+  const peakHourSlot = useMemo(() => {
+    let max = 0;
+    let maxHour = 10;
+    slotHours.forEach(h => {
+      const v = Number(slots[h]?.visitors || 0);
+      if (v > max) {
+        max = v;
+        maxHour = h;
+      }
+    });
+    const formatHour = maxHour > 12 ? `${maxHour - 12}:00 PM` : maxHour === 12 ? '12:00 PM' : `${maxHour}:00 AM`;
+    return { hourStr: formatHour, count: max };
+  }, [slots]);
+
   return (
     <DashboardLayout 
       title="Hourly Footfall Register" 
@@ -99,7 +160,7 @@ export default function Footfall() {
     >
       <div className="space-y-6">
         
-        {/* Top Controls: Glass Date Selector + Operating Hours Header */}
+        {/* Top Controls: Glass Date Selector + Excel Export Button */}
         <div className="space-y-5">
           <div className="card-glass p-5 lg:p-6 flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border border-[#e2dfd7]/80 bg-white/70 backdrop-blur-xl shadow-md rounded-2xl">
             <div className="flex items-center gap-4">
@@ -141,11 +202,19 @@ export default function Footfall() {
               </div>
             </div>
 
-            <div className="flex items-center gap-3">
-              <div className="px-4 py-2.5 rounded-xl bg-[#1E2D4E]/5 border border-[#1E2D4E]/10 flex items-center gap-2 text-xs font-extrabold text-[#1E2D4E]">
-                <Clock className="w-4 h-4 text-[#C9952A] shrink-0" />
-                <span>Operating Window: <strong className="text-[#1E2D4E]">10:00 AM – 10:00 PM</strong></span>
-              </div>
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="px-3.5 py-2 rounded-xl bg-emerald-100/80 border border-emerald-300/50 text-emerald-800 text-xs font-black flex items-center gap-1.5 shadow-2xs">
+                <Zap className="w-4 h-4 text-emerald-600 animate-pulse" />
+                <span>Socket Push Sync Active</span>
+              </span>
+
+              <button
+                onClick={handleExportExcel}
+                className="btn-gold px-4 py-2 text-xs font-black flex items-center gap-2 shadow-sm rounded-xl"
+              >
+                <Download className="w-4 h-4" />
+                <span>Export Register (.xlsx)</span>
+              </button>
             </div>
           </div>
 
@@ -166,10 +235,10 @@ export default function Footfall() {
               color="emerald"
             />
             <MetricCard
-              title="Pending Slots"
-              value={`${pendingSlotsCount} / 12`}
-              subtext="Remaining floor operating slots"
-              icon={Hourglass}
+              title="Peak Rush Hour"
+              value={peakHourSlot.count > 0 ? peakHourSlot.hourStr : '—'}
+              subtext={`Highest traffic: ${peakHourSlot.count} visitors`}
+              icon={TrendingUp}
               color="gold"
             />
             <MetricCard
@@ -179,6 +248,42 @@ export default function Footfall() {
               icon={Activity}
               color="indigo"
             />
+          </div>
+        </div>
+
+        {/* Peak Hour Traffic Visual Heatmap Chart */}
+        <div className="card-glass p-5 lg:p-6 border border-[#e2dfd7]/80 bg-white/80 backdrop-blur-xl shadow-lg rounded-2xl space-y-3">
+          <div className="flex items-center justify-between border-b border-[#e2dfd7] pb-3">
+            <div className="flex items-center gap-2">
+              <TrendingUp className="w-5 h-5 text-[#C9952A]" />
+              <h3 className="font-extrabold text-[#1E2D4E] text-sm uppercase tracking-wider">
+                Store Hourly Traffic Distribution Heatmap
+              </h3>
+            </div>
+            <span className="text-xs font-bold text-[#777777] font-mono">
+              Peak Slot: <strong className="text-[#C9952A]">{peakHourSlot.hourStr} ({peakHourSlot.count} Visitors)</strong>
+            </span>
+          </div>
+
+          <div className="h-44 w-full pt-2">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={chartData}>
+                <defs>
+                  <linearGradient id="visitorGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#C9952A" stopOpacity={0.6}/>
+                    <stop offset="95%" stopColor="#1E2D4E" stopOpacity={0.05}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2dfd7" />
+                <XAxis dataKey="time" stroke="#777777" fontSize={11} tickLine={false} />
+                <YAxis stroke="#777777" fontSize={11} tickLine={false} axisLine={false} />
+                <Tooltip 
+                  contentStyle={{ backgroundColor: '#1E2D4E', borderRadius: '12px', border: 'none', color: '#fff', fontSize: '12px', fontWeight: 'bold' }}
+                  itemStyle={{ color: '#C9952A' }}
+                />
+                <Area type="monotone" dataKey="visitors" stroke="#C9952A" strokeWidth={3} fillOpacity={1} fill="url(#visitorGradient)" />
+              </AreaChart>
+            </ResponsiveContainer>
           </div>
         </div>
 

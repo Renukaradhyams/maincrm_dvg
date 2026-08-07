@@ -114,6 +114,13 @@ exports.upsertFootfall = async (req, res) => {
       VALUES (?, ?, ?, ?, ?, ?)
       ON DUPLICATE KEY UPDATE visitors = VALUES(visitors), remarks = VALUES(remarks), submittedBy = VALUES(submittedBy), updatedAt = CURRENT_TIMESTAMP
     `, [id, entryDate, slotHour, visitors || 0, remarks || '', submittedBy || 'Staff']);
+
+    // Emit Socket.IO push event for zero-latency screen updates
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('footfall:updated', { entryDate, slotHour, visitors: Number(visitors) || 0, remarks, submittedBy });
+    }
+
     return res.json({ success: true, message: 'Footfall slot updated successfully' });
   } catch (err) {
     return res.status(500).json({ success: false, error: err.message });
