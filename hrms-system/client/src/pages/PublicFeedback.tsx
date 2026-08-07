@@ -50,7 +50,7 @@ export default function PublicFeedback() {
           </div>
           <h2 className="text-2xl font-black text-[#1E2D4E]">Thank You!</h2>
           <p className="text-gray-600 font-medium text-sm mt-2">
-            Your feedback has been received. We value your shopping experience at BSC The Textile Mall.
+            Your feedback has been received. We value your shopping experience at BSC EXCLUSIVE DAVANAGERE.
           </p>
           <button
             onClick={() => {
@@ -76,7 +76,7 @@ export default function PublicFeedback() {
         <div className="text-center mb-8">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#1E2D4E] text-[#C9952A] text-xs font-extrabold uppercase tracking-widest mb-3">
             <Sparkles className="w-4 h-4" />
-            <span>BSC The Textile Mall</span>
+            <span>BSC EXCLUSIVE DAVANAGERE</span>
           </div>
           <h1 className="text-3xl font-black text-[#1E2D4E]">Customer Experience Survey</h1>
           <p className="text-gray-600 text-sm mt-1 font-medium">Please take a minute to rate your visit today</p>

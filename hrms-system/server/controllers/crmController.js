@@ -20,7 +20,7 @@ exports.getSettings = async (req, res) => {
     });
     // Fallback defaults
     const result = {
-      companyName: settingsMap['company_name'] || 'BSC Retail Store',
+      companyName: settingsMap['company_name'] || 'BSC EXCLUSIVE DAVANAGERE',
       logoUrl: settingsMap['logo_url'] || '/logo.png',
       openHour: parseInt(settingsMap['open_hour'] || '10', 10),
       closeHour: parseInt(settingsMap['close_hour'] || '22', 10),

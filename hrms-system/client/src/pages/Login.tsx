@@ -58,9 +58,9 @@ export default function LoginPage() {
         <div className="bg-[#1E2D4E] p-6 flex items-center gap-4 border-b border-[#C9952A]/30">
           <img src="/logo.png" alt="BSC Logo" className="w-12 h-12 object-contain rounded-2xl bg-white p-1.5 shadow-md border border-white/20" />
           <div>
-            <h2 className="text-lg font-black text-white leading-tight tracking-tight">Enterprise ATS Portal</h2>
+            <h2 className="text-lg font-black text-white leading-tight tracking-tight">Enterprise Operations Portal</h2>
             <div className="text-[10px] text-[#C9952A] font-bold uppercase tracking-widest mt-0.5">
-              BSC The Textile Mall · Since 1938
+              BSC EXCLUSIVE DAVANAGERE
             </div>
           </div>
         </div>
@@ -70,6 +70,9 @@ export default function LoginPage() {
           <div>
             <h3 className="text-xl font-black text-[#1E2D4E] tracking-tight">Welcome Back</h3>
             <p className="text-xs text-[#777777] font-medium mt-1">Sign in with your authorized system credentials</p>
+            <p className="text-[10.5px] text-[#C9952A] font-bold mt-1 bg-amber-50 p-2 rounded-lg border border-amber-200">
+              Testing Admin Login: <span className="font-mono text-gray-800">admin@bsctextiles.com</span> / <span className="font-mono text-gray-800">password123</span>
+            </p>
           </div>
 
           {errorMsg && (
@@ -88,7 +91,7 @@ export default function LoginPage() {
                 type="text"
                 value={username}
                 onChange={(e) => setUsername(e.target.value)}
-                placeholder="Enter your username"
+                placeholder="admin@bsctextiles.com"
                 className="w-full text-xs font-semibold pl-10 pr-4 py-3 rounded-xl border border-[#e2dfd7] bg-[#F9F7F4] text-[#1E2D4E] focus:outline-none focus:border-[#1E2D4E] focus:bg-white transition-all shadow-xs"
                 required
               />

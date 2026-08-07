@@ -34,7 +34,7 @@ export default function FeedbackQR() {
               className="w-60 h-60 object-contain mx-auto"
             />
             <div className="mt-4 font-black text-xs text-[#1E2D4E] uppercase tracking-wider">
-              BSC The Textile Mall
+              BSC EXCLUSIVE DAVANAGERE
             </div>
           </div>
 

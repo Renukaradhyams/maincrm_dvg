@@ -112,7 +112,7 @@ export default function TVDisplay() {
         <div className="flex items-center gap-4">
           <img src="/logo.png" alt="Logo" className="w-12 h-12 bg-white p-1 rounded-2xl" />
           <div>
-            <h1 className="text-3xl font-black tracking-wide text-white">BSC THE TEXTILE MALL</h1>
+            <h1 className="text-3xl font-black tracking-wide text-white">BSC EXCLUSIVE DAVANAGERE</h1>
             <div className="text-xs font-extrabold text-[#C9952A] uppercase tracking-widest mt-0.5">Live Operations Hub</div>
           </div>
         </div>
@@ -165,7 +165,7 @@ export default function TVDisplay() {
       {/* Marquee Footer Ticker */}
       <div className="bg-black/30 border border-white/10 p-4 rounded-2xl overflow-hidden whitespace-nowrap">
         <div className="inline-block animate-marquee text-sm font-bold text-amber-200">
-          ✨ Welcome to BSC The Textile Mall · Established 1938 · Premium Sarees, Ethnic Wear, Suiting & Shirting Collection · Customer Delight Desk Active ✨
+          ✨ Welcome to BSC EXCLUSIVE DAVANAGERE · Premium Sarees, Ethnic Wear, Suiting & Shirting Collection · Customer Delight Desk Active ✨
         </div>
       </div>
     </div>

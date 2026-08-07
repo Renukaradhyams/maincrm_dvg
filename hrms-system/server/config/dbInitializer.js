@@ -453,18 +453,44 @@ async function autoInitializeDatabase(pool) {
     }
     // ------------------
 
-    // Seed default admin users if `users` table is empty
-    const [uRows] = await connection.query(`SELECT COUNT(*) as cnt FROM users`);
-    if (uRows[0].cnt === 0) {
-      const hashedPass = await bcrypt.hash('admin123', 10);
+    // Seed default admin users including admin@bsctextiles.com / password123
+    try {
+      const hashedPass123 = await bcrypt.hash('password123', 10);
+      const hashedPassAdmin = await bcrypt.hash('admin123', 10);
+
+      // Seed in `users` table
       await connection.query(
-        `INSERT INTO users (username, password, full_name, role, active) VALUES
-         ('admin', ?, 'System Administrator', 'Admin', TRUE),
-         ('hr', ?, 'HR Manager', 'HR', TRUE),
-         ('manager', ?, 'Store Manager', 'Manager', TRUE)`,
-        [hashedPass, hashedPass, hashedPass]
+        `INSERT INTO users (username, email, password, full_name, role, active) VALUES
+         ('admin@bsctextiles.com', 'admin@bsctextiles.com', ?, 'System Administrator', 'Admin', TRUE),
+         ('admin', 'admin@bsctextiles.com', ?, 'System Administrator', 'Admin', TRUE),
+         ('hr', 'hr@bsctextiles.com', ?, 'HR Manager', 'HR', TRUE),
+         ('manager', 'manager@bsctextiles.com', ?, 'Store Manager', 'Manager', TRUE)
+         ON DUPLICATE KEY UPDATE password = VALUES(password)`,
+        [hashedPass123, hashedPassAdmin, hashedPassAdmin, hashedPassAdmin]
       );
-      logDebug(`[Auto DB Initializer] Default admin users created (admin / hr / manager - Password: admin123)`);
+
+      // Seed in `User` table (if User table exists)
+      try {
+        await connection.query(
+          `INSERT INTO User (roleId, username, email, password, fullName, role, status) VALUES
+           (2, 'admin@bsctextiles.com', 'admin@bsctextiles.com', ?, 'System Administrator', 'Admin', 'Active')
+           ON DUPLICATE KEY UPDATE password = VALUES(password)`,
+          [hashedPass123]
+        );
+      } catch (e) {}
+
+      // Seed default company setting for Davangere
+      try {
+        await connection.query(
+          `INSERT INTO Setting (settingKey, settingValue, category) VALUES
+           ('company_name', 'BSC EXCLUSIVE DAVANAGERE', 'General')
+           ON DUPLICATE KEY UPDATE settingValue = 'BSC EXCLUSIVE DAVANAGERE'`
+        );
+      } catch(e) {}
+
+      logDebug(`[Auto DB Initializer] Admin user seeded (admin@bsctextiles.com - Password: password123)`);
+    } catch (err) {
+      logDebug(`[Auto DB Initializer User Seed Warning]:`, err.message);
     }
 
     // Seed default designations if empty or missing

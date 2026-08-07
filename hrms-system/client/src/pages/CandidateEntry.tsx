@@ -261,7 +261,7 @@ export default function CandidateEntryPage() {
             <div>
               <h1 className="font-extrabold text-base sm:text-lg leading-tight tracking-tight">BSC Applicant Registration</h1>
               <div className="text-[10px] text-[#C9952A] font-bold uppercase tracking-widest mt-0.5">
-                BSC The Textile Mall · Since 1938
+                BSC EXCLUSIVE DAVANAGERE
               </div>
             </div>
           </div>

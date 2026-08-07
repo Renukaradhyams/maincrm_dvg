@@ -130,11 +130,11 @@ export default function Sidebar({ session, isOpen, onClose }: SidebarProps) {
           <div className="flex items-center gap-3">
             <img src="/logo.png" alt="BSC Logo" className="w-10 h-10 object-contain rounded-xl bg-white p-1 shadow-md border border-white/20" />
             <div>
-              <div className="font-extrabold text-sm text-white tracking-wide leading-tight">BSC Enterprise CRM</div>
+              <div className="font-extrabold text-sm text-white tracking-wide leading-tight">BSC EXCLUSIVE</div>
               <div className="text-[9.5px] text-[#C9952A] font-bold uppercase tracking-widest mt-0.5 flex items-center gap-1">
-                <span>The Textile Mall</span>
+                <span>Davangere Hub</span>
                 <span className="w-1 h-1 rounded-full bg-[#C9952A]"></span>
-                <span>1938</span>
+                <span>Retail</span>
               </div>
             </div>
           </div>
