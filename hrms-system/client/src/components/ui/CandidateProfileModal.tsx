@@ -364,9 +364,6 @@ export default function CandidateProfileModal({ candidate, isOpen, onClose, onUp
                   >
                     <option value="New">🌱 New Candidate</option>
                     <option value="Shortlisted">📋 Shortlisted</option>
-                    <option value="1st Call">📞 1st Call Completed</option>
-                    <option value="2nd Call">📞 2nd Call Completed</option>
-                    <option value="Interview Scheduled">📅 Interview Scheduled</option>
                     <option value="Offer Issued">📄 Offer Issued</option>
                     <option value="Joined">🎉 Joined (Active Staff)</option>
                     <option value="Hold">⏸ On Hold</option>
