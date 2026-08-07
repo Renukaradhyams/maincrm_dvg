@@ -5,12 +5,15 @@ import { API } from '../services/api';
 import MetricCard from '../components/ui/MetricCard';
 import * as XLSX from 'xlsx';
 
+import EmployeeProfileModal from '../components/ui/EmployeeProfileModal';
+
 export default function Attendance() {
   const [employees, setEmployees] = useState<any[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [date, setDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [departmentFilter, setDepartmentFilter] = useState<string>('All');
+  const [selectedEmployee, setSelectedEmployee] = useState<any | null>(null);
 
   useEffect(() => {
     API.getEmployees()
@@ -201,7 +204,15 @@ export default function Attendance() {
                   {filteredEmployees.map((emp) => (
                     <tr key={emp.id || emp.appNo} className="hover:bg-[#1E2D4E]/5 transition-colors font-medium">
                       <td className="p-4 font-mono font-black text-[#1E2D4E]">{emp.employeeCode || emp.empNo || emp.appNo || `EMP-${emp.id}`}</td>
-                      <td className="p-4 font-extrabold text-[#1E2D4E]">{emp.name || emp.fullName || '—'}</td>
+                      <td className="p-4 font-extrabold text-[#1E2D4E]">
+                        <button
+                          onClick={() => setSelectedEmployee(emp)}
+                          className="hover:text-[#C9952A] hover:underline text-left transition-colors flex items-center gap-1.5"
+                          title="Click to view full employee overview card"
+                        >
+                          <span>{emp.name || emp.fullName || '—'}</span>
+                        </button>
+                      </td>
                       <td className="p-4 text-[#555555] font-semibold">{emp.department || 'Retail Sales'}</td>
                       <td className="p-4 text-[#C9952A] font-extrabold">{emp.desig || emp.designation || 'Staff'}</td>
                       <td className="p-4 text-[#555555]">General Shift (10 AM - 9 PM)</td>
@@ -220,6 +231,12 @@ export default function Attendance() {
             </div>
           )}
         </div>
+
+        {/* Universal 360 Employee Profile Overview Modal */}
+        <EmployeeProfileModal
+          employee={selectedEmployee}
+          onClose={() => setSelectedEmployee(null)}
+        />
       </div>
     </DashboardLayout>
   );

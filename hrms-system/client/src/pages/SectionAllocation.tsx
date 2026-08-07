@@ -7,6 +7,7 @@ import { API, Auth, UserSession } from '../services/api';
 import MetricCard from '../components/ui/MetricCard';
 import StatusBadge from '../components/ui/StatusBadge';
 import ManageSectionsModal from '../components/ManageSectionsModal';
+import EmployeeProfileModal from '../components/ui/EmployeeProfileModal';
 import { BSC_DEPARTMENT_SECTIONS, BSC_DEPARTMENTS, getSectionsForDepartment, getUniqueDepartments, normalizeDepartmentName } from '../utils/bscDepartments';
 import { 
   Layers, 
@@ -756,134 +757,14 @@ export default function SectionAllocationPage() {
         </div>
       )}
 
-      {/* Centered Employee Overview Modal */}
-      {overviewModal.open && overviewModal.emp && (
-        <div className="fixed inset-0 z-50 bg-[#1E2D4E]/70 backdrop-blur-xs flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-[#EDE8DE] rounded-3xl border border-[#e2dfd7] shadow-2xl w-full max-w-2xl p-6 sm:p-7 space-y-6 max-h-[90vh] overflow-y-auto relative animate-scale-in">
-            {/* Close Button */}
-            <button
-              onClick={() => setOverviewModal({ open: false, emp: null })}
-              className="absolute top-5 right-5 w-9 h-9 rounded-full bg-[#1E2D4E]/10 hover:bg-[#1E2D4E] hover:text-white text-[#1E2D4E] flex items-center justify-center transition-colors shadow-xs"
-            >
-              <X className="w-5 h-5" />
-            </button>
-
-            {/* Profile Header */}
-            <div className="flex flex-col sm:flex-row items-center sm:items-start gap-4 border-b border-[#e2dfd7] pb-5">
-              <div className="w-16 h-16 rounded-2xl bg-[#1E2D4E] text-[#C9952A] font-black text-xl flex items-center justify-center shadow-lg border-2 border-[#C9952A]">
-                {overviewModal.emp.initials}
-              </div>
-              <div className="text-center sm:text-left flex-1">
-                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                  <div>
-                    <h2 className="text-xl font-black text-[#1E2D4E] tracking-tight">{overviewModal.emp.name}</h2>
-                    <p className="text-xs font-extrabold text-[#C9952A] mt-0.5">{overviewModal.emp.desig}</p>
-                  </div>
-                  <span className="px-3 py-1 rounded-full text-xs font-black bg-emerald-100 text-emerald-800 border border-emerald-300 self-center sm:self-auto">
-                    {overviewModal.emp.status}
-                  </span>
-                </div>
-                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-[#666666] font-medium mt-2">
-                  <span>ID: <strong className="text-[#1E2D4E]">{overviewModal.emp.empId}</strong></span>
-                  <span>•</span>
-                  <span>App No: <strong className="text-[#1E2D4E]">{overviewModal.emp.appNo}</strong></span>
-                  <span>•</span>
-                  <span>Phone: <strong className="text-[#1E2D4E]">{overviewModal.emp.phone}</strong></span>
-                </div>
-              </div>
-            </div>
-
-            {/* PROMINENT HIGHLIGHT CARDS */}
-            <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
-              <div className="p-3 rounded-2xl bg-white border border-[#e2dfd7] text-center shadow-xs">
-                <span className="text-[9.5px] font-black uppercase text-[#777777] block">Designation</span>
-                <span className="font-extrabold text-[#1E2D4E] text-xs mt-1 block truncate">{overviewModal.emp.desig}</span>
-              </div>
-              <div className="p-3 rounded-2xl bg-white border border-[#e2dfd7] text-center shadow-xs">
-                <span className="text-[9.5px] font-black uppercase text-[#777777] block">Department</span>
-                <span className="font-extrabold text-[#1E2D4E] text-xs mt-1 block truncate">{overviewModal.emp.department}</span>
-              </div>
-              <div className="p-3 rounded-2xl bg-[#C9952A]/10 border border-[#C9952A] text-center shadow-xs">
-                <span className="text-[9.5px] font-black uppercase text-[#C9952A] block">Allocated Section</span>
-                <span className="font-extrabold text-[#1E2D4E] text-xs mt-1 block truncate">
-                  {overviewModal.emp.section || 'Unallocated'}
-                </span>
-              </div>
-              <div className="p-3 rounded-2xl bg-white border border-[#e2dfd7] text-center shadow-xs">
-                <span className="text-[9.5px] font-black uppercase text-[#777777] block">Joining Date</span>
-                <span className="font-extrabold text-[#1E2D4E] text-xs mt-1 block truncate">{overviewModal.emp.doj}</span>
-              </div>
-              <div className="p-3 rounded-2xl bg-emerald-50 border border-emerald-200 text-center shadow-xs col-span-2 sm:col-span-1">
-                <span className="text-[9.5px] font-black uppercase text-emerald-800 block">Offered Salary</span>
-                <span className="font-extrabold text-emerald-900 text-xs mt-1 block truncate">{overviewModal.emp.salary}</span>
-              </div>
-            </div>
-
-            {/* Detailed Info Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-              <div className="p-4 rounded-2xl bg-white border border-[#e2dfd7] space-y-2.5">
-                <h4 className="font-black text-[#1E2D4E] text-xs uppercase tracking-wider border-b border-[#e2dfd7] pb-1.5 flex items-center gap-1.5">
-                  <UserCheck className="w-3.5 h-3.5 text-[#C9952A]" />
-                  <span>Personal &amp; Contact Details</span>
-                </h4>
-                <div className="space-y-1.5 font-medium text-[#444444]">
-                  <div className="flex justify-between">
-                    <span className="text-[#777777]">Full Name:</span>
-                    <strong className="text-[#1E2D4E]">{overviewModal.emp.name}</strong>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-[#777777]">Phone:</span>
-                    <strong className="text-[#1E2D4E]">{overviewModal.emp.phone}</strong>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-[#777777]">Email:</span>
-                    <strong className="text-[#1E2D4E]">{overviewModal.emp.email}</strong>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-[#777777]">Branch:</span>
-                    <strong className="text-[#1E2D4E]">{overviewModal.emp.branch}</strong>
-                  </div>
-                </div>
-              </div>
-
-              <div className="p-4 rounded-2xl bg-white border border-[#e2dfd7] space-y-2.5">
-                <h4 className="font-black text-[#1E2D4E] text-xs uppercase tracking-wider border-b border-[#e2dfd7] pb-1.5 flex items-center gap-1.5">
-                  <Briefcase className="w-3.5 h-3.5 text-[#C9952A]" />
-                  <span>Employment Placement</span>
-                </h4>
-                <div className="space-y-1.5 font-medium text-[#444444]">
-                  <div className="flex justify-between">
-                    <span className="text-[#777777]">Department:</span>
-                    <strong className="text-[#1E2D4E]">{overviewModal.emp.department}</strong>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-[#777777]">Current Section:</span>
-                    <strong className="text-[#C9952A]">{overviewModal.emp.section || 'Not Assigned'}</strong>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-[#777777]">Reporting Manager:</span>
-                    <strong className="text-[#1E2D4E]">{overviewModal.emp.department} Department Manager</strong>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-[#777777]">Workplace:</span>
-                    <strong className="text-[#1E2D4E]">BSC Textiles Mall</strong>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Modal Footer */}
-            <div className="flex items-center justify-end pt-3 border-t border-[#e2dfd7]">
-              <button
-                onClick={() => setOverviewModal({ open: false, emp: null })}
-                className="btn-primary text-xs shadow-sm"
-              >
-                Close Overview
-              </button>
-            </div>
-          </div>
-        </div>
+      {/* Universal 360 Employee Profile Overview Modal */}
+      {overviewModal.open && (
+        <EmployeeProfileModal
+          employee={overviewModal.emp}
+          onClose={() => setOverviewModal({ open: false, emp: null })}
+        />
       )}
+
       {/* Manage Sections Modal */}
       <ManageSectionsModal
         isOpen={manageSectionsOpen}

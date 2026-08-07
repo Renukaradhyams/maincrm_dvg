@@ -39,6 +39,7 @@ export default function DashboardPage() {
   const navigate = useNavigate();
   const [session, setSession] = useState<UserSession | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [selectedEmployee, setSelectedEmployee] = useState<any | null>(null);
 
   // Employees & Operational Stats
   const [employees, setEmployees] = useState<any[]>([]);
@@ -426,7 +427,15 @@ export default function DashboardPage() {
                     paginatedEmployees.map((emp) => (
                       <tr key={emp.appNo || emp.empNo} className="hover:bg-black/5 font-medium transition-colors">
                         <td className="py-3.5 px-4 font-mono font-extrabold text-[#1E2D4E]">{emp.empNo || emp.appNo}</td>
-                        <td className="py-3.5 px-4 font-extrabold text-[#1E2D4E]">{emp.name || emp.fullName}</td>
+                        <td className="py-3.5 px-4 font-extrabold text-[#1E2D4E]">
+                          <button
+                            onClick={() => setSelectedEmployee(emp)}
+                            className="hover:text-[#C9952A] hover:underline text-left transition-colors flex items-center gap-1.5"
+                            title="Click to view full employee overview card"
+                          >
+                            <span>{emp.name || emp.fullName}</span>
+                          </button>
+                        </td>
                         <td className="py-3.5 px-4 text-[#555555] font-semibold">{emp.desig || emp.designation || 'Staff'}</td>
                         <td className="py-3.5 px-4 text-[#555555] font-semibold">{emp.department || '—'}</td>
                         <td className="py-3.5 px-4 text-[#C9952A] font-extrabold">{emp.section || 'Unassigned'}</td>
@@ -476,6 +485,12 @@ export default function DashboardPage() {
           </div>
         </main>
       </div>
+
+      {/* Universal 360 Employee Profile Overview Modal */}
+      <EmployeeProfileModal
+        employee={selectedEmployee}
+        onClose={() => setSelectedEmployee(null)}
+      />
     </div>
   );
 }
