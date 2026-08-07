@@ -438,7 +438,12 @@ async function autoInitializeDatabase(pool) {
       "ALTER TABLE manpower_requisitions ADD COLUMN priority VARCHAR(50) DEFAULT 'Normal'",
       "ALTER TABLE manpower_requisitions ADD COLUMN status VARCHAR(50) DEFAULT 'Open'",
       "ALTER TABLE manpower_requisitions ADD COLUMN opening_date DATE NULL",
-      "ALTER TABLE manpower_requisitions ADD COLUMN closing_date DATE NULL"
+      "ALTER TABLE manpower_requisitions ADD COLUMN closing_date DATE NULL",
+
+      "ALTER TABLE candidates ADD COLUMN department VARCHAR(150) NULL",
+      "ALTER TABLE candidates ADD COLUMN section VARCHAR(150) NULL",
+      "ALTER TABLE selection_offers ADD COLUMN section VARCHAR(150) NULL",
+      "ALTER TABLE selection_offers ADD COLUMN salary VARCHAR(100) NULL"
     ];
 
     for (const sql of migrations) {

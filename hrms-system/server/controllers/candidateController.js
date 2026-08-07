@@ -29,13 +29,17 @@ class CandidateController {
         return errorRes(res, 'Application number is required', ['appNo missing'], 400);
       }
 
-      const updates = req.body.updates ? req.body.updates : req.body;
-      const user = req.body.doneBy || (req.user ? req.user.username : 'HR');
+      let updates = req.body;
+      if (req.body && typeof req.body.updates === 'object' && req.body.updates !== null) {
+        updates = { ...req.body, ...req.body.updates };
+      }
+      const user = req.body.doneBy || updates.doneBy || (req.user ? req.user.username : 'HR');
 
       const result = await candidateService.updateCandidateFull(appNo, updates, user);
       return res.json(result);
     } catch (err) {
-      return errorRes(res, 'Failed to update candidate', [err.message], 500);
+      console.error('[updateCandidate Controller Error]:', err);
+      return errorRes(res, 'Failed to update candidate: ' + err.message, [err.message], 500);
     }
   }
 

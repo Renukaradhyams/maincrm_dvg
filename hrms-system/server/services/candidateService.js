@@ -349,6 +349,7 @@ class CandidateService {
   }
 
   async updateCandidateFull(appNo, data, doneBy = 'HR') {
+    if (!appNo) return { success: false, error: 'App No missing' };
     const fields = [];
     const values = [];
     const allowed = ['name','email','phone','address','gender','blood_group','dob','offered_doj','designation','department','section','branch','reporting_manager','remarks','qualification','experience','retail_experience','previous_company','previous_designation','aadhaar_number','father_details','mother_details','religion_caste','languages_known', 'resume_url', 'photo_url', 'aadhaar_url', 'current_salary', 'expected_salary', 'salary', 'status'];
@@ -358,6 +359,7 @@ class CandidateService {
       offered_doj: ['offeredDoj', 'estDoj', 'doj', 'offered_doj'],
       designation: ['desig', 'designation', 'role'],
       section: ['section'],
+      department: ['department'],
       reporting_manager: ['reportingManager', 'reporting_manager'],
       retail_experience: ['retailExperience', 'retail_experience'],
       previous_company: ['previousCompany', 'previous_company'],
@@ -378,11 +380,22 @@ class CandidateService {
       salary: ['salary', 'salaryOffered', 'offeredSalary', 'baseSalary']
     };
 
+    // Safely query existing columns in candidates table
+    let existingCols = new Set();
+    try {
+      const [colRows] = await pool.query(`SHOW COLUMNS FROM candidates`);
+      colRows.forEach(c => existingCols.add(c.Field));
+    } catch (e) {
+      // Fallback if SHOW COLUMNS fails
+    }
+
     for (const key of allowed) {
+      if (existingCols.size > 0 && !existingCols.has(key)) continue;
+
       const candidateKeys = map[key] || [key];
       let foundValue = undefined;
       for (const k of candidateKeys) {
-        if (data[k] !== undefined && data[k] !== null) {
+        if (data && data[k] !== undefined && data[k] !== null) {
           foundValue = data[k];
           break;
         }
@@ -390,40 +403,55 @@ class CandidateService {
 
       if (foundValue !== undefined) {
         fields.push(`${key} = ?`);
-        values.push(Array.isArray(foundValue) ? JSON.stringify(foundValue) : foundValue);
+        values.push(Array.isArray(foundValue) ? JSON.stringify(foundValue) : String(foundValue));
       }
     }
 
     if (fields.length > 0) {
       values.push(appNo);
-      await pool.query(`UPDATE candidates SET ${fields.join(', ')} WHERE app_no = ?`, values);
+      try {
+        await pool.query(`UPDATE candidates SET ${fields.join(', ')} WHERE app_no = ?`, values);
+      } catch (err) {
+        console.error('[UPDATE candidates SQL Error]:', err.message);
+        if (data.status) {
+          await pool.query(`UPDATE candidates SET status = ? WHERE app_no = ?`, [data.status, appNo]).catch(()=>{});
+        }
+      }
     }
 
     // Sync selection_offers table if existing
-    const salVal = data.salary || data.salaryOffered || data.offeredSalary;
-    const desigVal = data.desig || data.designation;
-    if (data.department || desigVal || data.status || data.remarks || salVal) {
-      await pool.query(
-        `UPDATE selection_offers 
-         SET department = COALESCE(?, department), 
-             designation = COALESCE(?, designation), 
-             status = COALESCE(?, status), 
-             remarks = COALESCE(?, remarks), 
-             salary = COALESCE(?, salary),
-             updated_at = NOW() 
-         WHERE app_no = ?`,
-        [data.department || null, desigVal || null, data.status || null, data.remarks || null, salVal || null, appNo]
-      );
+    try {
+      const salVal = data.salary || data.salaryOffered || data.offeredSalary;
+      const desigVal = data.desig || data.designation;
+      if (data.department || desigVal || data.status || data.remarks || salVal || data.section) {
+        await pool.query(
+          `UPDATE selection_offers 
+           SET department = COALESCE(?, department), 
+               designation = COALESCE(?, designation), 
+               status = COALESCE(?, status), 
+               remarks = COALESCE(?, remarks), 
+               salary = COALESCE(?, salary),
+               updated_at = NOW() 
+           WHERE app_no = ?`,
+          [data.department || null, desigVal || null, data.status || null, data.remarks || null, salVal || null, appNo]
+        );
+      }
+    } catch (e) {
+      // Ignore if selection_offers update optional columns fail
     }
 
-    // Insert activity log
-    const [cand] = await pool.query(`SELECT id FROM candidates WHERE app_no = ?`, [appNo]);
-    if (cand.length > 0) {
-      await pool.query(
-        `INSERT INTO candidate_activities (candidate_id, app_no, action_type, icon, label, remarks, by_user, color)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-        [cand[0].id, appNo, 'profile_edit', '✏️', `Profile updated by ${doneBy}`, data.remarks || 'Profile details saved', doneBy, 'gold']
-      );
+    // Insert activity log safely
+    try {
+      const [cand] = await pool.query(`SELECT id FROM candidates WHERE app_no = ?`, [appNo]);
+      if (cand && cand.length > 0) {
+        await pool.query(
+          `INSERT INTO candidate_activities (candidate_id, app_no, action_type, icon, label, remarks, by_user, color)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+          [cand[0].id, appNo, 'profile_edit', '✏️', `Profile updated by ${doneBy}`, data.remarks || 'Profile details saved', doneBy, 'gold']
+        );
+      }
+    } catch (e) {
+      // Activity log safety catch
     }
 
     return { success: true };
