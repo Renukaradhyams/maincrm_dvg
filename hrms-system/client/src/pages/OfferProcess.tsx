@@ -537,8 +537,22 @@ export default function OfferProcessPage() {
                               <div className="font-bold text-slate-800">{o.estDoj || o.actualDoj || '—'}</div>
                               {o.noticePd && <div className="text-[10px] text-slate-400 font-medium">NP: {o.noticePd}</div>}
                             </td>
-                            <td className="py-3.5 px-4">
-                              {renderStatusBadge(o.status)}
+                            <td className="py-3.5 px-4" onClick={(e) => e.stopPropagation()}>
+                              <select
+                                value={o.status || 'Pending Accept'}
+                                onChange={(e) => handleUpdateOfferStatus(o.appNo, e.target.value)}
+                                className={`text-[11px] font-extrabold rounded-xl border-2 px-2.5 py-1.5 cursor-pointer outline-none transition-all shadow-xs ${
+                                  o.status === 'Accepted' ? 'bg-emerald-50 text-emerald-800 border-emerald-300' :
+                                  o.status === 'Joined' ? 'bg-teal-50 text-teal-800 border-teal-300 font-black' :
+                                  o.status === 'Declined' || o.status === 'Offer Rejected' ? 'bg-rose-50 text-rose-800 border-rose-300' :
+                                  'bg-blue-50 text-blue-800 border-blue-300'
+                                }`}
+                              >
+                                <option value="Pending Accept">⏳ Pending Accept</option>
+                                <option value="Accepted">✅ Accepted</option>
+                                <option value="Joined">🎉 Joined (Move to Employees)</option>
+                                <option value="Declined">❌ Offer Rejected</option>
+                              </select>
                             </td>
                             <td className="py-3.5 px-4 text-right" onClick={(e) => e.stopPropagation()}>
                               <div className="flex items-center justify-end gap-2">
