@@ -170,12 +170,7 @@ class CandidateService {
       const osLower = (r.offer_status || '').toLowerCase().trim();
       const csLower = (r.status || '').toLowerCase().trim();
 
-      let computedStatus = r.status;
-      if (isEmp || osLower === 'joined' || osLower === 'accepted' || csLower === 'joined' || csLower === 'hired' || csLower === 'already selected') {
-        computedStatus = 'Already Selected';
-      } else if (csLower === 'selected') {
-        computedStatus = 'Already Selected';
-      }
+      let computedStatus = r.status || 'New';
 
       return {
         id: r.id,
