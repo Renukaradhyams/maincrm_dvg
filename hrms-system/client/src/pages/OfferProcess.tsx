@@ -161,7 +161,8 @@ export default function OfferProcessPage() {
       });
     }
 
-    if (activeFilter === 'Pending Accept') list = list.filter(o => o.status === 'Pending Accept');
+    // 'Pending' tab covers both legacy 'Pending Accept' AND current 'Shortlisted'
+    if (activeFilter === 'Pending Accept') list = list.filter(o => o.status === 'Pending Accept' || o.status === 'Shortlisted');
     if (activeFilter === 'Accepted') list = list.filter(o => o.status === 'Accepted');
     if (activeFilter === 'Declined') list = list.filter(o => o.status === 'Declined' || o.status === 'Offer Rejected');
     if (activeFilter === 'Joined') list = list.filter(o => o.status === 'Joined');
@@ -178,15 +179,16 @@ export default function OfferProcessPage() {
   }, [offers, activeFilter, searchQuery, activeRange, fromDate, toDate]);
 
   const stats = useMemo(() => {
-    const list = filtered || [];
-    const pending = list.filter(o => o.status === 'Pending Accept').length;
+    const list = offers || []; // Stats computed from ALL offers, not just filtered
+    // Pending = Shortlisted (current flow) OR Pending Accept (legacy)
+    const pending = list.filter(o => o.status === 'Shortlisted' || o.status === 'Pending Accept').length;
     const accepted = list.filter(o => o.status === 'Accepted').length;
     const rejected = list.filter(o => o.status === 'Declined' || o.status === 'Offer Rejected').length;
     const joined = list.filter(o => o.status === 'Joined').length;
     const totalPkgSum = list.reduce((acc, curr) => acc + parseSalaryAndIncentive(curr.salary).total, 0);
     const avgSalary = list.length ? totalPkgSum / list.length : 0;
     return { pending, accepted, rejected, joined, avgSalary };
-  }, [filtered]);
+  }, [offers]);
 
   const handleSaveDetails = async () => {
     if (!detailOffer || saving) return;
@@ -300,22 +302,24 @@ export default function OfferProcessPage() {
     
     setFinalDesignation(o.desig || '');
     setDepartment(o.department || '');
-    setOtherSection('');
+    setOtherSection(o.section || '');
     setOfferRemarks(o.remarks || '');
-    setOfferStatus(o.status || 'Pending Accept');
+    // Use the actual offer status — do NOT default to Pending Accept
+    setOfferStatus(o.status || 'Shortlisted');
   };
 
   const renderStatusBadge = (status: string) => {
     let classes = "px-3 py-1 rounded-full text-[10px] sm:text-xs font-bold border transition-colors inline-block text-center shadow-2xs ";
     switch(status) {
+      case 'Shortlisted': classes += "bg-blue-100 text-blue-800 border-blue-200"; break;
       case 'Accepted': classes += "bg-emerald-100 text-emerald-800 border-emerald-200"; break;
       case 'Joined': classes += "bg-teal-100 text-teal-800 border-teal-200"; break;
-      case 'Pending Accept': classes += "bg-blue-100 text-blue-800 border-blue-200"; break;
+      case 'Pending Accept': classes += "bg-indigo-100 text-indigo-800 border-indigo-200"; break;
       case 'Declined':
       case 'Offer Rejected': classes += "bg-rose-100 text-rose-800 border-rose-200"; break;
       default: classes += "bg-slate-100 text-slate-800 border-slate-200";
     }
-    return <span className={classes}>{status || 'Pending'}</span>;
+    return <span className={classes}>{status || 'Shortlisted'}</span>;
   };
 
   return (
@@ -874,10 +878,9 @@ export default function OfferProcessPage() {
                         onChange={(e) => setOfferStatus(e.target.value)} 
                         className="w-full px-3.5 py-2 rounded-xl border border-slate-300 bg-slate-50 text-slate-800 font-bold text-xs outline-none focus:border-blue-500 focus:bg-white transition-all cursor-pointer"
                       >
-                        <option value="Pending Accept">⏳ Pending Accept</option>
-                        <option value="Accepted">✅ Accepted</option>
-                        <option value="Offer Rejected">❌ Offer Rejected / Declined</option>
+                        <option value="Shortlisted">📋 Shortlisted</option>
                         <option value="Joined">🎉 Joined</option>
+                        <option value="Offer Rejected">❌ Offer Rejected / Declined</option>
                       </select>
                     </div>
 

@@ -473,8 +473,6 @@ export default function CandidateProfileModal({ candidate, isOpen, onClose, onUp
                   >
                     <option value="New">🌱 New Candidate</option>
                     <option value="Shortlisted">📋 Shortlisted (Moved to Offer Desk)</option>
-                    <option value="Selected">✅ Selected</option>
-                    <option value="Offer Issued">📄 Offer Sent / Issued</option>
                     <option value="Joined">🎉 Joined (Active Staff)</option>
                     <option value="Hold">⏸ On Hold</option>
                     <option value="Rejected">❌ Rejected</option>
