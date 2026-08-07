@@ -277,12 +277,16 @@ export default function OfferProcessPage() {
     }
   };
 
-  const handleUpdateOfferStatus = async (appNo: string, status: string) => {
+  const handleUpdateOfferStatus = async (appNo: string, status: string, offerObj?: any) => {
     if (saving) return;
+    if (status === 'Joined') {
+      handleAcceptOffer(offerObj || { appNo });
+      return;
+    }
     setSaving(true);
     try {
       await API.updateOfferStatus({ appNo, status });
-      showToast(`Offer status updated to ${status}`, 'success');
+      showToast(`Offer status updated to ${status} 🎉`, 'success');
       loadOffers();
     } catch (e: any) {
       showToast('Error: ' + e.message, 'error');
@@ -617,19 +621,25 @@ export default function OfferProcessPage() {
                               {o.noticePd && <div className="text-[10px] text-slate-400 font-medium">NP: {o.noticePd}</div>}
                             </td>
                             <td className="py-3.5 px-4" onClick={(e) => e.stopPropagation()}>
-                              {o.status === 'Joined' ? (
-                                <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-[11px] font-black bg-teal-50 text-teal-700 border border-teal-300">
-                                  🎉 Joined
-                                </span>
-                              ) : o.status === 'Declined' || o.status === 'Offer Rejected' ? (
-                                <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-[11px] font-black bg-rose-50 text-rose-700 border border-rose-300">
-                                  ❌ Offer Rejected
-                                </span>
-                              ) : (
-                                <span className="inline-flex items-center gap-1 px-3 py-1.5 rounded-full text-[11px] font-black bg-blue-50 text-blue-700 border border-blue-300">
-                                  ⏳ {o.status || 'Shortlisted'}
-                                </span>
-                              )}
+                              <select
+                                value={o.status || 'Shortlisted'}
+                                disabled={saving}
+                                onChange={(e) => handleUpdateOfferStatus(o.appNo, e.target.value, o)}
+                                className={`text-[11px] font-extrabold rounded-xl border-2 px-2.5 py-1.5 cursor-pointer outline-none transition-all shadow-xs ${
+                                  o.status === 'Joined' ? 'bg-teal-50 text-teal-800 border-teal-300 font-black' :
+                                  o.status === 'Accepted' ? 'bg-emerald-50 text-emerald-800 border-emerald-300' :
+                                  o.status === 'Offer Sent' ? 'bg-amber-50 text-amber-800 border-amber-300' :
+                                  o.status === 'Hold' ? 'bg-orange-50 text-orange-800 border-orange-300' :
+                                  o.status === 'Declined' || o.status === 'Offer Rejected' || o.status === 'Rejected' ? 'bg-rose-50 text-rose-800 border-rose-300' :
+                                  'bg-blue-50 text-blue-800 border-blue-300'
+                                }`}
+                              >
+                                <option value="Shortlisted">📋 Shortlisted</option>
+                                <option value="Offer Sent">📄 Offer Sent</option>
+                                <option value="Hold">⏸ On Hold</option>
+                                <option value="Rejected">❌ Rejected / Declined</option>
+                                <option value="Joined">🎉 Joined (Move to Employee Directory)</option>
+                              </select>
                             </td>
                             <td className="py-3.5 px-4 text-right" onClick={(e) => e.stopPropagation()}>
                               <div className="flex items-center justify-end gap-2">
