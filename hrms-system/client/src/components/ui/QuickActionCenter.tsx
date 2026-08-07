@@ -14,7 +14,7 @@ export default function QuickActionCenter() {
 
   const actions = [
     { label: 'Register Candidate', icon: UserPlus, href: '/candidate-entry', target: '_blank', color: 'bg-[#1E2D4E]' },
-    { label: 'Schedule Interview', icon: Calendar, href: '/interview-panel', color: 'bg-indigo-600' },
+    { label: 'Section Allocation', icon: Calendar, href: '/section-allocation', color: 'bg-indigo-600' },
     { label: 'Broadcast Notification', icon: Send, href: '/broadcast-center', color: 'bg-[#C9952A]' },
     { label: 'Employee Directory', icon: UserCheck, href: '/employees', color: 'bg-[#1a8a84]' },
     { label: 'Manpower Openings', icon: Briefcase, href: '/openings', color: 'bg-amber-600' },

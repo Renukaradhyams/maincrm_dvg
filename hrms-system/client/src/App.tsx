@@ -49,8 +49,8 @@ export default function App() {
         <Route path="/attendance" element={<Attendance />} />
         <Route path="/candidates" element={<Candidates />} />
         <Route path="/candidate-entry" element={<CandidateEntry />} />
-        <Route path="/interview-panel" element={<InterviewPanel />} />
-        <Route path="/interview-form" element={<InterviewForm />} />
+        <Route path="/interview-panel" element={<Navigate to="/candidates" replace />} />
+        <Route path="/interview-form" element={<Navigate to="/candidates" replace />} />
         <Route path="/offer-process" element={<OfferProcess />} />
         <Route path="/onboarding" element={<Onboarding />} />
         <Route path="/employees" element={<Employees />} />

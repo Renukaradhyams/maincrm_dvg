@@ -91,7 +91,6 @@ export default function Sidebar({ session, isOpen, onClose }: SidebarProps) {
     { key: 'vm_checklist', href: '/vm-checklist', label: 'VM Checklist', icon: ClipboardList, section: 'Store Operations' },
     { key: 'attendance', href: '/attendance', label: 'Attendance & Roster', icon: UserCheck, section: 'Store Operations' },
     { key: 'candidates', href: '/candidates', label: 'Candidate CRM', icon: Users, section: 'Core Workspace' },
-    { key: 'interview', href: '/interview-panel', label: 'Interview Panel', icon: Target, section: 'Core Workspace' },
     { key: 'offer', href: '/offer-process', label: 'Offer Desk', icon: FileText, section: 'Core Workspace' },
     { key: 'openings', href: '/openings', label: 'Manpower Planning', icon: Briefcase, section: 'Core Workspace' },
     { key: 'onboarding', href: '/onboarding', label: 'Onboarding Hub', icon: PartyPopper, section: 'Talent Management' },
