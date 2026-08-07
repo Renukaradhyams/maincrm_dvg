@@ -91,6 +91,42 @@ class NotificationEngine {
       this.handleIncomingBroadcast(broadcast);
     });
 
+    this.socket.on('feedback:negative', (data: any) => {
+      const notif: SystemNotification = {
+        id: 'fb-' + Date.now(),
+        title: '🚨 Negative Customer Feedback Alert',
+        subject: 'Store Escalation',
+        message: data.message || 'Negative feedback submitted by customer',
+        timestamp: new Date().toISOString(),
+        priority: 'critical',
+        category: 'Emergency',
+        targetRole: 'Everyone',
+        senderName: 'Customer Tablet',
+        read: false
+      };
+      this.notifications = [notif, ...this.notifications];
+      this.notifyListeners();
+      this.playNotificationSound('critical');
+    });
+
+    this.socket.on('divert:created', (data: any) => {
+      const notif: SystemNotification = {
+        id: 'div-' + Date.now(),
+        title: '📦 Urgent Stock Divert Request',
+        subject: 'Sourcing Alert',
+        message: data.message || 'New stock divert request created',
+        timestamp: new Date().toISOString(),
+        priority: 'high',
+        category: 'General',
+        targetRole: 'Everyone',
+        senderName: data.createdBy || 'Floor Staff',
+        read: false
+      };
+      this.notifications = [notif, ...this.notifications];
+      this.notifyListeners();
+      this.playNotificationSound('high');
+    });
+
     this.socket.on('DELETE_BROADCAST', ({ id }: { id: string }) => {
       this.notifications = this.notifications.filter(n => n.id !== id.toString());
       this.notifyListeners();

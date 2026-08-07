@@ -170,6 +170,16 @@ exports.submitFeedback = async (req, res) => {
         INSERT INTO CallQueue (id, feedbackId, entryDate, customerName, mobile, status, notes)
         VALUES (?, ?, ?, ?, ?, 'new', ?)
       `, [cqId, id, entryDate, customerName || 'Valued Customer', mobile || '', 'Negative customer feedback auto-escalated']);
+
+      const io = req.app.get('io');
+      if (io) {
+        io.emit('feedback:negative', {
+          id,
+          customerName: customerName || 'Valued Customer',
+          mobile: mobile || 'No Mobile',
+          message: `ALERT: Negative customer feedback logged by ${customerName || 'Customer'} (${mobile || 'No Mobile'})`
+        });
+      }
     }
 
     return res.json({ success: true, message: 'Thank you for your feedback!' });
@@ -252,6 +262,17 @@ exports.createDivert = async (req, res) => {
       INSERT INTO DivertUpdates (id, divertId, status, note, actorId, actorRole)
       VALUES (?, ?, 'open', 'Sourcing divert raised by staff', ?, 'Staff')
     `, [updateId, id, createdBy || 'Staff']);
+
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('divert:created', {
+        id,
+        productWanted,
+        quantity: quantity || 1,
+        createdBy: createdBy || 'Floor Staff',
+        message: `URGENT DIVERT: New stock request for ${productWanted} (Qty: ${quantity || 1}) created by ${createdBy || 'Floor Staff'}`
+      });
+    }
 
     return res.json({ success: true, message: 'Divert created successfully', id });
   } catch (err) {
