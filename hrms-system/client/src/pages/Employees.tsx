@@ -960,6 +960,7 @@ export default function EmployeesPage() {
       <EmployeeProfileModal
         employee={drawerEmp}
         onClose={() => setDrawerEmp(null)}
+        onUpdated={loadEmployees}
       />
     </div>
   );

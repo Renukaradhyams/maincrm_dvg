@@ -236,6 +236,11 @@ export default function Attendance() {
         <EmployeeProfileModal
           employee={selectedEmployee}
           onClose={() => setSelectedEmployee(null)}
+          onUpdated={() => {
+            API.getEmployees().then((res: any) => {
+              if (res && res.employees) setEmployees(res.employees);
+            });
+          }}
         />
       </div>
     </DashboardLayout>

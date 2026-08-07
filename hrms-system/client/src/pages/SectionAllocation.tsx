@@ -762,6 +762,7 @@ export default function SectionAllocationPage() {
         <EmployeeProfileModal
           employee={overviewModal.emp}
           onClose={() => setOverviewModal({ open: false, emp: null })}
+          onUpdated={loadData}
         />
       )}
 

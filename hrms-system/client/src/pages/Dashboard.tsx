@@ -490,6 +490,7 @@ export default function DashboardPage() {
       <EmployeeProfileModal
         employee={selectedEmployee}
         onClose={() => setSelectedEmployee(null)}
+        onUpdated={loadData}
       />
     </div>
   );
