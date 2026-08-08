@@ -149,49 +149,112 @@ export default function PublicFeedback() {
   }
 
   return (
-    <div className="min-h-screen bg-[#EDE8DE] py-6 sm:py-10 px-4 sm:px-6 flex justify-center selection:bg-[#C9952A] selection:text-white">
-      <div className="max-w-4xl w-full space-y-6">
+    <div className="min-h-screen bg-[#EDE8DE] py-5 sm:py-8 px-4 sm:px-6 flex justify-center selection:bg-[#C9952A] selection:text-white">
+      <div className="max-w-4xl w-full space-y-5">
         
-        {/* Header Hero Branding Card */}
-        <div className="card-glass p-6 sm:p-8 rounded-3xl bg-gradient-to-br from-[#1E2D4E] to-[#142038] text-white border border-white/20 shadow-2xl relative overflow-hidden">
-          <div className="absolute -top-12 -right-12 w-64 h-64 bg-[#C9952A]/10 rounded-full blur-3xl pointer-events-none"></div>
-          
-          <div className="relative z-10 space-y-3 text-center sm:text-left">
-            <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-white/10 text-amber-300 text-xs font-black uppercase tracking-widest border border-amber-300/30">
-              <Store className="w-3.5 h-3.5 text-amber-300" />
-              <span>BSC EXCLUSIVE DAVANAGERE • STORE SURVEY</span>
-            </div>
-            
-            <h1 className="text-2xl sm:text-4xl font-black text-white tracking-tight leading-tight">
-              Customer Experience Survey
-            </h1>
-            
-            <p className="text-white/80 text-xs sm:text-sm font-medium leading-relaxed max-w-2xl">
-              Please take a minute to share your feedback. Your response helps us improve our service and shopping experience.
-            </p>
+        {/* Compact Premium Hero Card (220-260px Height) */}
+        <div className="card-glass p-5 sm:p-7 rounded-3xl bg-gradient-to-br from-[#1E2D4E] via-[#162340] to-[#0F172A] text-white border border-white/20 shadow-2xl relative overflow-hidden flex flex-col justify-between min-h-[220px] sm:min-h-[250px]">
+          {/* Subtle Decorative Background Shapes & Glow */}
+          <div className="absolute -top-16 -right-16 w-72 h-72 bg-[#C9952A]/15 rounded-full blur-3xl pointer-events-none"></div>
+          <div className="absolute -bottom-16 -left-16 w-72 h-72 bg-blue-500/10 rounded-full blur-3xl pointer-events-none"></div>
 
-            {/* Completion Progress Bar */}
-            <div className="pt-3 space-y-1.5">
-              <div className="flex items-center justify-between text-xs font-bold text-white/90">
-                <span className="flex items-center gap-1.5 text-[11px] font-black uppercase tracking-wider text-amber-300">
-                  <Clock className="w-3.5 h-3.5 text-amber-300" />
-                  <span>Estimated Time: ~1 Minute</span>
-                </span>
-                <span className="font-mono text-amber-300 font-extrabold">{progressStats.pct}% Completed</span>
+          <div className="relative z-10 grid grid-cols-1 sm:grid-cols-3 gap-4 items-center">
+            
+            {/* Left Content Column */}
+            <div className="sm:col-span-2 space-y-2 text-center sm:text-left">
+              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 text-amber-300 text-[10.5px] font-black uppercase tracking-widest border border-amber-300/30">
+                <Store className="w-3.5 h-3.5 text-amber-300" />
+                <span>BSC EXCLUSIVE DAVANAGERE • STORE SURVEY</span>
               </div>
               
-              <div className="w-full h-3 bg-white/10 rounded-full overflow-hidden p-0.5 border border-white/10">
-                <div 
-                  className="h-full bg-gradient-to-r from-[#C9952A] to-amber-300 rounded-full transition-all duration-300 shadow-md"
-                  style={{ width: `${progressStats.pct}%` }}
-                ></div>
+              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-white tracking-tight leading-tight">
+                Customer Experience Survey
+              </h1>
+              
+              <p className="text-white/80 text-xs sm:text-sm font-medium leading-relaxed max-w-lg">
+                "Help us improve your shopping experience in just one minute."
+              </p>
+            </div>
+
+            {/* Right Summary Panel with Circular Progress Ring (Tablet Optimized) */}
+            <div className="sm:col-span-1 bg-white/10 backdrop-blur-md p-4 rounded-2xl border border-white/15 flex items-center justify-between sm:flex-col sm:justify-center gap-3 text-center">
+              
+              {/* Circular Progress Ring */}
+              <div className="relative w-16 h-16 sm:w-20 sm:h-20 flex items-center justify-center shrink-0">
+                <svg className="w-full h-full transform -rotate-90" viewBox="0 0 36 36">
+                  <path
+                    className="text-white/15"
+                    strokeWidth="3.5"
+                    stroke="currentColor"
+                    fill="none"
+                    d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                  />
+                  <path
+                    className="text-[#C9952A] transition-all duration-500 ease-out"
+                    strokeDasharray={`${progressStats.pct}, 100`}
+                    strokeWidth="3.5"
+                    strokeLinecap="round"
+                    stroke="currentColor"
+                    fill="none"
+                    d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
+                  />
+                </svg>
+                <div className="absolute flex flex-col items-center justify-center">
+                  <span className="font-mono text-xs sm:text-sm font-black text-amber-300">{progressStats.pct}%</span>
+                  <span className="text-[8px] uppercase font-bold text-white/70">Done</span>
+                </div>
               </div>
+
+              {/* Stats Summary */}
+              <div className="text-right sm:text-center space-y-0.5 text-xs">
+                <div className="flex items-center justify-end sm:justify-center gap-1 text-[11px] font-black text-amber-300">
+                  <Clock className="w-3 h-3 text-amber-300" />
+                  <span>Est. Time: 1 Min</span>
+                </div>
+                <div className="text-white/90 text-[10.5px] font-bold">5 Survey Sections</div>
+                <div className="text-white/70 text-[10px] font-medium">{progressStats.count} of {progressStats.total} Completed</div>
+              </div>
+
+            </div>
+
+          </div>
+
+          {/* Full-Width Section Step Progress Track below Hero */}
+          <div className="relative z-10 pt-4 border-t border-white/10 space-y-2">
+            <div className="flex items-center justify-between text-[10.5px] font-bold text-white/90 overflow-x-auto gap-2 scrollbar-none">
+              <span className={`px-2.5 py-0.5 rounded-full whitespace-nowrap ${customerName && mobile ? 'bg-amber-400 text-[#1E2D4E] font-black' : 'bg-white/10 text-white/80'}`}>
+                1. Details
+              </span>
+              <span className="text-white/40">→</span>
+              <span className={`px-2.5 py-0.5 rounded-full whitespace-nowrap ${answers['q1'] ? 'bg-amber-400 text-[#1E2D4E] font-black' : 'bg-white/10 text-white/80'}`}>
+                2. Shopping
+              </span>
+              <span className="text-white/40">→</span>
+              <span className={`px-2.5 py-0.5 rounded-full whitespace-nowrap ${answers['q2'] || answers['q3'] ? 'bg-amber-400 text-[#1E2D4E] font-black' : 'bg-white/10 text-white/80'}`}>
+                3. Product
+              </span>
+              <span className="text-white/40">→</span>
+              <span className={`px-2.5 py-0.5 rounded-full whitespace-nowrap ${answers['q4'] ? 'bg-amber-400 text-[#1E2D4E] font-black' : 'bg-white/10 text-white/80'}`}>
+                4. Staff
+              </span>
+              <span className="text-white/40">→</span>
+              <span className={`px-2.5 py-0.5 rounded-full whitespace-nowrap ${answers['q5'] || likedMost ? 'bg-amber-400 text-[#1E2D4E] font-black' : 'bg-white/10 text-white/80'}`}>
+                5. Feedback
+              </span>
+            </div>
+
+            {/* Progress Track Line */}
+            <div className="w-full h-2 bg-white/10 rounded-full overflow-hidden p-0.5 border border-white/10">
+              <div 
+                className="h-full bg-gradient-to-r from-[#C9952A] to-amber-300 rounded-full transition-all duration-300 shadow-md"
+                style={{ width: `${progressStats.pct}%` }}
+              ></div>
             </div>
           </div>
         </div>
 
-        {/* Survey Form Body */}
-        <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Survey Form Body (20px Gap) */}
+        <form onSubmit={handleSubmit} className="space-y-5">
           
           {/* Customer Details Card (2-Column on Tablet, 1-Column on Mobile) */}
           <div className="card-glass p-6 sm:p-8 rounded-3xl space-y-4 border border-white/80 bg-white/80 shadow-md">
