@@ -20,7 +20,9 @@ import {
   Zap, 
   ShieldCheck, 
   Check,
-  Award
+  Award,
+  ShoppingBag,
+  Lock
 } from 'lucide-react';
 import { API } from '../services/api';
 
@@ -57,9 +59,9 @@ export default function PublicFeedback() {
       .catch((err: any) => console.error(err));
   }, []);
 
-  // Compute live survey completion progress
+  // Compute live survey completion progress (7 total items: Name + Mobile + 5 Questions)
   const progressStats = useMemo(() => {
-    const totalRequired = questions.length + 2; // Name + Mobile + questions
+    const totalRequired = questions.length + 2; // Name + Mobile + 5 Questions = 7
     const count = (customerName.trim() ? 1 : 0) + (mobile.trim() ? 1 : 0) + Object.keys(answers).length;
     const pct = Math.min(100, Math.round((count / totalRequired) * 100));
     return { count, total: totalRequired, pct };
@@ -94,14 +96,14 @@ export default function PublicFeedback() {
     if (l.includes('satisfied') || l.includes('good') || l.includes('helpful') || l.includes('yes')) return <ThumbsUp className="w-4 h-4 text-emerald-500 shrink-0" />;
     if (l.includes('neutral') || l.includes('average') || l.includes('partially')) return <Meh className="w-4 h-4 text-amber-500 shrink-0" />;
     if (l.includes('dissatisfied') || l.includes('poor') || l.includes('no') || l.includes('not recommend')) return <Frown className="w-4 h-4 text-rose-500 shrink-0" />;
-    return <Star className="w-4 h-4 text-[#C9952A] shrink-0" />;
+    return <Star className="w-4 h-4 text-[#D4A12F] shrink-0" />;
   };
 
   if (submitted) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-[#0F172A] via-[#1E2D4E] to-[#142038] flex items-center justify-center p-4 sm:p-6 select-none relative overflow-hidden text-white">
+      <div className="min-h-screen bg-gradient-to-br from-[#162447] via-[#1F3A6E] to-[#0F172A] flex items-center justify-center p-4 sm:p-6 select-none relative overflow-hidden text-white">
         {/* Background Ambient Glows */}
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-[#C9952A]/10 rounded-full blur-3xl pointer-events-none"></div>
+        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-[#D4A12F]/15 rounded-full blur-3xl pointer-events-none"></div>
         <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
 
         <div className="bg-white/10 backdrop-blur-2xl p-8 sm:p-10 max-w-lg w-full text-center space-y-6 animate-scale-in border border-white/20 rounded-3xl shadow-2xl relative z-10">
@@ -110,18 +112,18 @@ export default function PublicFeedback() {
           </div>
 
           <div className="space-y-2">
-            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-400/10 border border-amber-400/30 text-amber-300 text-[10px] font-black uppercase tracking-widest">
-              <Store className="w-3 h-3" /> BSC EXCLUSIVE DAVANAGERE
+            <div className="inline-flex items-center gap-1.5 px-3.5 py-1 rounded-full bg-[#162447] border border-[#D4A12F] text-[#D4A12F] text-[10.5px] font-black uppercase tracking-widest">
+              <Store className="w-3.5 h-3.5" /> BSC EXCLUSIVE DAVANAGERE
             </div>
             <h2 className="text-3xl font-black text-white tracking-tight">Thank You!</h2>
-            <p className="text-white/80 text-sm font-medium leading-relaxed max-w-md mx-auto">
+            <p className="text-white/85 text-sm font-medium leading-relaxed max-w-md mx-auto">
               Your valuable feedback has been received successfully. We appreciate your time in helping us improve our retail experience.
             </p>
           </div>
 
           {/* Reference Badge */}
           <div className="p-4 rounded-2xl bg-white/5 border border-white/10 text-xs text-white/90 space-y-1">
-            <div className="text-[10px] uppercase font-black tracking-widest text-[#C9952A]">Survey Reference ID</div>
+            <div className="text-[10px] uppercase font-black tracking-widest text-[#D4A12F]">Survey Reference ID</div>
             <div className="font-mono text-base font-black text-white">{refNo}</div>
           </div>
 
@@ -135,13 +137,13 @@ export default function PublicFeedback() {
               setCanImprove('');
               setAdditionalComments('');
             }}
-            className="btn-gold w-full py-4 text-sm font-black rounded-2xl shadow-xl active:scale-95 transition-all duration-150 border-2 border-amber-300/40"
+            className="w-full h-14 bg-gradient-to-r from-[#D4A12F] via-[#F3C04D] to-[#D4A12F] text-[#162447] font-black text-sm rounded-2xl shadow-xl active:scale-95 transition-all duration-150 border-2 border-amber-200/50"
           >
             Submit Another Survey Response
           </button>
 
           <div className="text-[10.5px] text-white/50 font-bold">
-            BSC EXCLUSIVE • STORE KIOSK FEEDBACK SYSTEM
+            BSC EXCLUSIVE • LUXURY STORE KIOSK FEEDBACK SYSTEM
           </div>
         </div>
       </div>
@@ -149,35 +151,35 @@ export default function PublicFeedback() {
   }
 
   return (
-    <div className="min-h-screen bg-[#EDE8DE] py-5 sm:py-8 px-4 sm:px-6 flex justify-center selection:bg-[#C9952A] selection:text-white">
+    <div className="min-h-screen bg-[#EDE8DE] py-5 sm:py-8 px-4 sm:px-6 flex justify-center selection:bg-[#D4A12F] selection:text-[#162447]">
       <div className="max-w-4xl w-full space-y-5">
         
-        {/* Compact Premium Hero Card (220-260px Height) */}
-        <div className="card-glass p-5 sm:p-7 rounded-3xl bg-gradient-to-br from-[#1E2D4E] via-[#162340] to-[#0F172A] text-white border border-white/20 shadow-2xl relative overflow-hidden flex flex-col justify-between min-h-[220px] sm:min-h-[250px]">
-          {/* Subtle Decorative Background Shapes & Glow */}
-          <div className="absolute -top-16 -right-16 w-72 h-72 bg-[#C9952A]/15 rounded-full blur-3xl pointer-events-none"></div>
-          <div className="absolute -bottom-16 -left-16 w-72 h-72 bg-blue-500/10 rounded-full blur-3xl pointer-events-none"></div>
+        {/* Luxury Deep Navy to Royal Navy & Gold Hero Section (220-260px Height) */}
+        <div className="card-glass p-6 sm:p-8 rounded-[24px] bg-gradient-to-br from-[#162447] via-[#1F3A6E] to-[#142038] text-white border border-white/20 shadow-2xl relative overflow-hidden flex flex-col justify-between min-h-[230px] sm:min-h-[255px]">
+          {/* Subtle Decorative Gold Highlight & Shapes */}
+          <div className="absolute -top-20 -right-20 w-80 h-80 bg-[#D4A12F]/20 rounded-full blur-3xl pointer-events-none"></div>
+          <div className="absolute -bottom-20 -left-20 w-80 h-80 bg-blue-500/10 rounded-full blur-3xl pointer-events-none"></div>
 
-          <div className="relative z-10 grid grid-cols-1 sm:grid-cols-3 gap-4 items-center">
+          <div className="relative z-10 grid grid-cols-1 sm:grid-cols-3 gap-5 items-center">
             
             {/* Left Content Column */}
-            <div className="sm:col-span-2 space-y-2 text-center sm:text-left">
-              <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 text-amber-300 text-[10.5px] font-black uppercase tracking-widest border border-amber-300/30">
-                <Store className="w-3.5 h-3.5 text-amber-300" />
+            <div className="sm:col-span-2 space-y-2.5 text-center sm:text-left">
+              <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-[#162447] text-[#D4A12F] text-[11px] font-black uppercase tracking-widest border border-[#D4A12F]/80 shadow-sm">
+                <ShoppingBag className="w-3.5 h-3.5 text-[#D4A12F]" />
                 <span>BSC EXCLUSIVE DAVANAGERE • STORE SURVEY</span>
               </div>
               
-              <h1 className="text-2xl sm:text-3xl lg:text-4xl font-black text-white tracking-tight leading-tight">
+              <h1 className="text-3xl sm:text-4xl lg:text-[42px] font-black text-white tracking-tight leading-tight drop-shadow-md">
                 Customer Experience Survey
               </h1>
               
-              <p className="text-white/80 text-xs sm:text-sm font-medium leading-relaxed max-w-lg">
-                "Help us improve your shopping experience in just one minute."
+              <p className="text-white/85 text-sm sm:text-base font-medium leading-relaxed max-w-xl">
+                “Help us improve your shopping experience in just one minute.”
               </p>
             </div>
 
-            {/* Right Summary Panel with Circular Progress Ring (Tablet Optimized) */}
-            <div className="sm:col-span-1 bg-white/10 backdrop-blur-md p-4 rounded-2xl border border-white/15 flex items-center justify-between sm:flex-col sm:justify-center gap-3 text-center">
+            {/* Right Side Glass Summary Panel with Circular Progress Ring */}
+            <div className="sm:col-span-1 bg-white/10 backdrop-blur-md p-4 sm:p-5 rounded-2xl border border-white/20 flex items-center justify-between sm:flex-col sm:justify-center gap-3 text-center shadow-lg">
               
               {/* Circular Progress Ring */}
               <div className="relative w-16 h-16 sm:w-20 sm:h-20 flex items-center justify-center shrink-0">
@@ -190,7 +192,7 @@ export default function PublicFeedback() {
                     d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
                   />
                   <path
-                    className="text-[#C9952A] transition-all duration-500 ease-out"
+                    className="text-[#D4A12F] transition-all duration-500 ease-out"
                     strokeDasharray={`${progressStats.pct}, 100`}
                     strokeWidth="3.5"
                     strokeLinecap="round"
@@ -200,53 +202,57 @@ export default function PublicFeedback() {
                   />
                 </svg>
                 <div className="absolute flex flex-col items-center justify-center">
-                  <span className="font-mono text-xs sm:text-sm font-black text-amber-300">{progressStats.pct}%</span>
-                  <span className="text-[8px] uppercase font-bold text-white/70">Done</span>
+                  <span className="font-mono text-xs sm:text-sm font-black text-[#D4A12F] drop-shadow-xs">{progressStats.pct}%</span>
+                  <span className="text-[8px] uppercase font-bold text-white/75">Done</span>
                 </div>
               </div>
 
-              {/* Stats Summary */}
+              {/* Stats Summary Panel */}
               <div className="text-right sm:text-center space-y-0.5 text-xs">
-                <div className="flex items-center justify-end sm:justify-center gap-1 text-[11px] font-black text-amber-300">
-                  <Clock className="w-3 h-3 text-amber-300" />
+                <div className="flex items-center justify-end sm:justify-center gap-1 text-[11px] font-black text-[#D4A12F]">
+                  <Clock className="w-3 h-3 text-[#D4A12F]" />
                   <span>Est. Time: 1 Min</span>
                 </div>
-                <div className="text-white/90 text-[10.5px] font-bold">5 Survey Sections</div>
-                <div className="text-white/70 text-[10px] font-medium">{progressStats.count} of {progressStats.total} Completed</div>
+                <div className="text-white/95 text-[11px] font-extrabold">5 Survey Sections</div>
+                <div className="text-white/80 text-[10px] font-semibold">{progressStats.count} of {progressStats.total} Completed</div>
               </div>
 
             </div>
 
           </div>
 
-          {/* Full-Width Section Step Progress Track below Hero */}
-          <div className="relative z-10 pt-4 border-t border-white/10 space-y-2">
-            <div className="flex items-center justify-between text-[10.5px] font-bold text-white/90 overflow-x-auto gap-2 scrollbar-none">
-              <span className={`px-2.5 py-0.5 rounded-full whitespace-nowrap ${customerName && mobile ? 'bg-amber-400 text-[#1E2D4E] font-black' : 'bg-white/10 text-white/80'}`}>
-                1. Details
+          {/* Full-Width Animated Section Step Tracker below Hero */}
+          <div className="relative z-10 pt-4 border-t border-white/15 space-y-2">
+            <div className="flex items-center justify-between text-[10.5px] font-extrabold text-white/90 overflow-x-auto gap-1.5 scrollbar-none">
+              <span className={`px-2.5 py-0.5 rounded-full whitespace-nowrap ${customerName && mobile ? 'bg-[#D4A12F] text-[#162447] font-black' : 'bg-white/10 text-white/80'}`}>
+                Details
               </span>
-              <span className="text-white/40">→</span>
-              <span className={`px-2.5 py-0.5 rounded-full whitespace-nowrap ${answers['q1'] ? 'bg-amber-400 text-[#1E2D4E] font-black' : 'bg-white/10 text-white/80'}`}>
-                2. Shopping
+              <span className="text-white/40">·</span>
+              <span className={`px-2.5 py-0.5 rounded-full whitespace-nowrap ${answers['q1'] ? 'bg-[#D4A12F] text-[#162447] font-black' : 'bg-white/10 text-white/80'}`}>
+                Shopping
               </span>
-              <span className="text-white/40">→</span>
-              <span className={`px-2.5 py-0.5 rounded-full whitespace-nowrap ${answers['q2'] || answers['q3'] ? 'bg-amber-400 text-[#1E2D4E] font-black' : 'bg-white/10 text-white/80'}`}>
-                3. Product
+              <span className="text-white/40">·</span>
+              <span className={`px-2.5 py-0.5 rounded-full whitespace-nowrap ${answers['q2'] || answers['q3'] ? 'bg-[#D4A12F] text-[#162447] font-black' : 'bg-white/10 text-white/80'}`}>
+                Product
               </span>
-              <span className="text-white/40">→</span>
-              <span className={`px-2.5 py-0.5 rounded-full whitespace-nowrap ${answers['q4'] ? 'bg-amber-400 text-[#1E2D4E] font-black' : 'bg-white/10 text-white/80'}`}>
-                4. Staff
+              <span className="text-white/40">·</span>
+              <span className={`px-2.5 py-0.5 rounded-full whitespace-nowrap ${answers['q4'] ? 'bg-[#D4A12F] text-[#162447] font-black' : 'bg-white/10 text-white/80'}`}>
+                Staff
               </span>
-              <span className="text-white/40">→</span>
-              <span className={`px-2.5 py-0.5 rounded-full whitespace-nowrap ${answers['q5'] || likedMost ? 'bg-amber-400 text-[#1E2D4E] font-black' : 'bg-white/10 text-white/80'}`}>
-                5. Feedback
+              <span className="text-white/40">·</span>
+              <span className={`px-2.5 py-0.5 rounded-full whitespace-nowrap ${answers['q5'] ? 'bg-[#D4A12F] text-[#162447] font-black' : 'bg-white/10 text-white/80'}`}>
+                Recommendation
+              </span>
+              <span className="text-white/40">·</span>
+              <span className={`px-2.5 py-0.5 rounded-full whitespace-nowrap ${likedMost || canImprove ? 'bg-[#D4A12F] text-[#162447] font-black' : 'bg-white/10 text-white/80'}`}>
+                Feedback
               </span>
             </div>
 
-            {/* Progress Track Line */}
-            <div className="w-full h-2 bg-white/10 rounded-full overflow-hidden p-0.5 border border-white/10">
+            {/* Dark Navy Track & Gold Progress Line */}
+            <div className="w-full h-2.5 bg-[#162447]/80 rounded-full overflow-hidden p-0.5 border border-white/10">
               <div 
-                className="h-full bg-gradient-to-r from-[#C9952A] to-amber-300 rounded-full transition-all duration-300 shadow-md"
+                className="h-full bg-gradient-to-r from-[#D4A12F] via-[#F3C04D] to-amber-300 rounded-full transition-all duration-300 shadow-md"
                 style={{ width: `${progressStats.pct}%` }}
               ></div>
             </div>
@@ -256,36 +262,42 @@ export default function PublicFeedback() {
         {/* Survey Form Body (20px Gap) */}
         <form onSubmit={handleSubmit} className="space-y-5">
           
-          {/* Customer Details Card (2-Column on Tablet, 1-Column on Mobile) */}
-          <div className="card-glass p-6 sm:p-8 rounded-3xl space-y-4 border border-white/80 bg-white/80 shadow-md">
+          {/* Customer Verification Panel (Secure Check-in Screen) */}
+          <div className="card-glass p-6 sm:p-8 rounded-[22px] space-y-4 border border-white/80 bg-white/95 shadow-lg border-t-4 border-t-[#D4A12F]">
             <div className="flex items-center justify-between border-b border-[#e2dfd7] pb-3">
-              <h3 className="font-black text-[#1E2D4E] text-xs sm:text-sm uppercase tracking-wider flex items-center gap-2">
-                <User className="w-4 h-4 text-[#C9952A]" />
+              <h3 className="font-black text-[#162447] text-xs sm:text-sm uppercase tracking-wider flex items-center gap-2">
+                <div className="bg-[#D4A12F]/15 p-1.5 rounded-xl text-[#162447]">
+                  <Lock className="w-4 h-4 text-[#D4A12F]" />
+                </div>
                 <span>Customer Verification Details</span>
               </h3>
-              <span className="text-[10.5px] font-extrabold text-[#777777] uppercase tracking-wider">Required *</span>
+              <span className="text-[10.5px] font-black text-[#D4A12F] uppercase tracking-wider bg-[#162447] px-2.5 py-1 rounded-full">Required Verification *</span>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-1.5">
-                <label className="block text-xs font-extrabold text-[#1E2D4E]">Full Name *</label>
+                <label className="block text-xs font-extrabold text-[#162447]">Full Name *</label>
                 <div className="relative">
-                  <User className="w-4 h-4 text-[#777777] absolute left-4 top-1/2 -translate-y-1/2" />
+                  <div className="absolute left-3.5 top-1/2 -translate-y-1/2 bg-[#D4A12F]/15 p-1.5 rounded-xl text-[#162447]">
+                    <User className="w-4 h-4 text-[#162447]" />
+                  </div>
                   <input
                     type="text"
                     required
                     placeholder="Enter your full name"
                     value={customerName}
                     onChange={(e) => setCustomerName(e.target.value)}
-                    className="w-full text-xs font-semibold pl-11 pr-4 h-13 sm:h-14 rounded-2xl border border-[#e2dfd7] bg-white text-[#1E2D4E] outline-none focus:border-[#C9952A] focus:ring-2 focus:ring-[#C9952A]/30 transition-all shadow-xs"
+                    className="w-full text-xs font-semibold pl-12 pr-4 h-14 rounded-2xl border border-[#e2dfd7] bg-white/95 text-[#162447] outline-none focus:border-[#D4A12F] focus:ring-2 focus:ring-[#D4A12F]/30 transition-all shadow-xs"
                   />
                 </div>
               </div>
 
               <div className="space-y-1.5">
-                <label className="block text-xs font-extrabold text-[#1E2D4E]">Mobile Number *</label>
+                <label className="block text-xs font-extrabold text-[#162447]">Mobile Number *</label>
                 <div className="relative">
-                  <Phone className="w-4 h-4 text-[#777777] absolute left-4 top-1/2 -translate-y-1/2" />
+                  <div className="absolute left-3.5 top-1/2 -translate-y-1/2 bg-[#D4A12F]/15 p-1.5 rounded-xl text-[#162447]">
+                    <Phone className="w-4 h-4 text-[#162447]" />
+                  </div>
                   <input
                     type="tel"
                     required
@@ -293,9 +305,12 @@ export default function PublicFeedback() {
                     placeholder="10-digit mobile number"
                     value={mobile}
                     onChange={(e) => setMobile(e.target.value.replace(/\D/g, ''))}
-                    className="w-full text-xs font-mono font-semibold pl-11 pr-4 h-13 sm:h-14 rounded-2xl border border-[#e2dfd7] bg-white text-[#1E2D4E] outline-none focus:border-[#C9952A] focus:ring-2 focus:ring-[#C9952A]/30 transition-all shadow-xs"
+                    className="w-full text-xs font-mono font-semibold pl-12 pr-4 h-14 rounded-2xl border border-[#e2dfd7] bg-white/95 text-[#162447] outline-none focus:border-[#D4A12F] focus:ring-2 focus:ring-[#D4A12F]/30 transition-all shadow-xs"
                   />
                 </div>
+                <p className="text-[10.5px] font-bold text-[#777777] pt-0.5">
+                  “We will only use this number for service follow-up.”
+                </p>
               </div>
             </div>
           </div>
@@ -308,26 +323,27 @@ export default function PublicFeedback() {
               const cleanTitle = q.question.replace(/^\d+\.\s*/, '');
 
               return (
-                <div key={q.id || idx} className="card-glass p-6 sm:p-8 rounded-3xl space-y-4 border border-white/80 bg-white/90 shadow-md">
+                <div key={q.id || idx} className="card-glass p-7 sm:p-8 rounded-[22px] space-y-4 border border-white/90 bg-white/95 shadow-lg border-t-4 border-t-[#D4A12F]">
                   
-                  {/* Question Header Badge */}
+                  {/* Section Badge Pill */}
                   <div className="flex items-center justify-between border-b border-[#e2dfd7] pb-3">
-                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#1E2D4E] text-[#C9952A] text-[10px] font-black uppercase tracking-widest">
-                      Q{idx + 1} • {categoryLabel}
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-[#162447] text-[#D4A12F] text-[10.5px] font-black uppercase tracking-widest">
+                      <Sparkles className="w-3.5 h-3.5 text-[#D4A12F]" />
+                      <span>{categoryLabel} • Section {idx + 1} of {questions.length}</span>
                     </span>
                     {answers[q.id] && (
-                      <span className="inline-flex items-center gap-1 text-xs font-extrabold text-emerald-600">
+                      <span className="inline-flex items-center gap-1 text-xs font-extrabold text-emerald-600 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200">
                         <Check className="w-3.5 h-3.5" /> Answered
                       </span>
                     )}
                   </div>
 
-                  <h3 className="text-base sm:text-lg font-black text-[#1E2D4E] leading-snug">
+                  <h3 className="text-xl sm:text-[22px] font-black text-[#162447] leading-snug">
                     {cleanTitle}
                   </h3>
 
-                  {/* Selectable Touch Chips Grid */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 pt-1">
+                  {/* Selectable Touch Chips Grid (54px Height) */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3.5 pt-2">
                     {opts.map((opt: string) => {
                       const isSelected = answers[q.id] === opt;
 
@@ -337,10 +353,10 @@ export default function PublicFeedback() {
                           key={opt}
                           onClick={() => setAnswers({ ...answers, [q.id]: opt })}
                           className={`
-                            min-h-[52px] py-3 px-4 rounded-2xl text-xs sm:text-sm font-extrabold transition-all duration-150 flex items-center justify-between gap-3 text-left border shadow-xs active:scale-95
+                            h-14 min-h-[56px] py-3.5 px-4 rounded-2xl text-xs sm:text-sm font-extrabold transition-all duration-150 flex items-center justify-between gap-3 text-left border shadow-xs active:scale-95
                             ${isSelected
-                              ? 'bg-[#1E2D4E] text-white border-2 border-[#C9952A] shadow-lg shadow-[#1E2D4E]/20 scale-[1.01]'
-                              : 'bg-white/90 text-[#1E2D4E] border-[#e2dfd7] hover:bg-white hover:border-[#1E2D4E]'}
+                              ? 'bg-[#162447] text-white border-2 border-[#D4A12F] shadow-xl shadow-[#162447]/20 scale-[1.01]'
+                              : 'bg-white/95 text-[#162447] border-[#e2dfd7] hover:bg-white hover:border-[#162447]'}
                           `}
                         >
                           <span className="truncate">{opt}</span>
@@ -355,10 +371,10 @@ export default function PublicFeedback() {
           </div>
 
           {/* Voice of Customer / Additional Feedback Section (3 Glass Textareas) */}
-          <div className="card-glass p-6 sm:p-8 rounded-3xl space-y-5 border border-white/80 bg-white/90 shadow-md">
+          <div className="card-glass p-7 sm:p-8 rounded-[22px] space-y-5 border border-white/90 bg-white/95 shadow-lg border-t-4 border-t-[#D4A12F]">
             <div className="flex items-center justify-between border-b border-[#e2dfd7] pb-3">
-              <h3 className="font-black text-[#1E2D4E] text-xs sm:text-sm uppercase tracking-wider flex items-center gap-2">
-                <MessageSquare className="w-4 h-4 text-[#C9952A]" />
+              <h3 className="font-black text-[#162447] text-xs sm:text-sm uppercase tracking-wider flex items-center gap-2">
+                <MessageSquare className="w-4 h-4 text-[#D4A12F]" />
                 <span>Voice of Customer Notes (Optional)</span>
               </h3>
               <span className="text-[10.5px] font-extrabold text-[#777777] uppercase tracking-wider">Store Feedback</span>
@@ -372,10 +388,10 @@ export default function PublicFeedback() {
                 </label>
                 <textarea
                   rows={2}
-                  placeholder="Tell us what stood out positively..."
+                  placeholder="Tell us what stood out positively during your visit..."
                   value={likedMost}
                   onChange={(e) => setLikedMost(e.target.value)}
-                  className="w-full text-xs font-medium p-3.5 rounded-xl border border-emerald-200 bg-white text-[#1E2D4E] outline-none focus:ring-2 focus:ring-emerald-400/30 transition-all"
+                  className="w-full text-xs font-medium p-3.5 rounded-xl border border-emerald-200 bg-white text-[#162447] outline-none focus:ring-2 focus:ring-emerald-400/30 transition-all"
                 ></textarea>
               </div>
 
@@ -386,10 +402,10 @@ export default function PublicFeedback() {
                 </label>
                 <textarea
                   rows={2}
-                  placeholder="Share suggestions or improvement areas..."
+                  placeholder="Share suggestions or improvement areas for our store..."
                   value={canImprove}
                   onChange={(e) => setCanImprove(e.target.value)}
-                  className="w-full text-xs font-medium p-3.5 rounded-xl border border-amber-200 bg-white text-[#1E2D4E] outline-none focus:ring-2 focus:ring-amber-400/30 transition-all"
+                  className="w-full text-xs font-medium p-3.5 rounded-xl border border-amber-200 bg-white text-[#162447] outline-none focus:ring-2 focus:ring-amber-400/30 transition-all"
                 ></textarea>
               </div>
 
@@ -400,28 +416,28 @@ export default function PublicFeedback() {
                 </label>
                 <textarea
                   rows={2}
-                  placeholder="Write any extra thoughts or comments..."
+                  placeholder="Write any extra thoughts, staff compliments, or general comments..."
                   value={additionalComments}
                   onChange={(e) => setAdditionalComments(e.target.value)}
-                  className="w-full text-xs font-medium p-3.5 rounded-xl border border-blue-200 bg-white text-[#1E2D4E] outline-none focus:ring-2 focus:ring-blue-400/30 transition-all"
+                  className="w-full text-xs font-medium p-3.5 rounded-xl border border-blue-200 bg-white text-[#162447] outline-none focus:ring-2 focus:ring-blue-400/30 transition-all"
                 ></textarea>
               </div>
             </div>
           </div>
 
-          {/* Submit Action Button */}
+          {/* Luxury Gold Submit Action Button (58px Height) */}
           <div className="space-y-3 pt-2">
             <button
               type="submit"
               disabled={submitting}
-              className="btn-gold w-full h-14 sm:h-16 text-base sm:text-lg font-black flex items-center justify-center gap-2 shadow-2xl rounded-2xl active:scale-95 transition-all duration-150 border-2 border-amber-300/40"
+              className="w-full h-[58px] bg-gradient-to-r from-[#D4A12F] via-[#F3C04D] to-[#D4A12F] text-[#162447] font-black text-base sm:text-lg rounded-2xl shadow-2xl border-2 border-amber-200/50 flex items-center justify-center gap-2.5 hover:brightness-105 active:scale-95 transition-all duration-150"
             >
               <Send className="w-5 h-5" />
               <span>{submitting ? 'Submitting Feedback...' : 'Submit Feedback Response'}</span>
             </button>
 
             <div className="text-center text-xs text-[#777777] font-semibold flex items-center justify-center gap-1.5">
-              <ShieldCheck className="w-4 h-4 text-[#C9952A]" />
+              <ShieldCheck className="w-4 h-4 text-[#D4A12F]" />
               <span>Your feedback helps us continuously improve your shopping experience.</span>
             </div>
           </div>
@@ -431,4 +447,5 @@ export default function PublicFeedback() {
     </div>
   );
 }
+
 
