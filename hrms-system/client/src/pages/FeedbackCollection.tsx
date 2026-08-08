@@ -502,7 +502,7 @@ export default function FeedbackCollection() {
                       </span>
                       <span className="flex items-center gap-1.5 font-mono text-[11px]">
                         <Hash className="w-3.5 h-3.5 text-[#C9952A]" />
-                        ID: #FB-{String(selectedFeedback.id).slice(0, 8).toUpperCase()}
+                        ID: #{String(selectedFeedback.id).startsWith('FB-') ? selectedFeedback.id : `FB-${selectedFeedback.id}`}
                       </span>
                     </div>
                   </div>

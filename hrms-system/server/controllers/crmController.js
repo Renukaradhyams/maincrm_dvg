@@ -17,6 +17,27 @@ function getISTDateString() {
   return istDate.toISOString().split('T')[0];
 }
 
+function getISTTimeString(d = new Date()) {
+  try {
+    let dateObj = d;
+    if (typeof d === 'string') {
+      const formattedStr = d.includes('Z') || d.includes('+') ? d : d.replace(' ', 'T') + 'Z';
+      dateObj = new Date(formattedStr);
+      if (isNaN(dateObj.getTime())) dateObj = new Date(d);
+    }
+    if (!dateObj || isNaN(dateObj.getTime())) return '';
+    return dateObj.toLocaleTimeString('en-US', { 
+      hour: '2-digit', 
+      minute: '2-digit', 
+      hour12: true, 
+      timeZone: 'Asia/Kolkata' 
+    });
+  } catch (e) {
+    return '';
+  }
+}
+
+
 // ── Settings & PIN Verification ─────────────────────────────
 exports.getSettings = async (req, res) => {
   try {
@@ -267,6 +288,8 @@ exports.submitFeedback = async (req, res) => {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
     `).catch(() => {});
 
+    await db.query(`ALTER TABLE Feedback ADD COLUMN entryTime VARCHAR(32)`).catch(() => {});
+
     const { 
       customerName, custName,
       mobile, custMobile,
@@ -277,33 +300,34 @@ exports.submitFeedback = async (req, res) => {
       source 
     } = req.body;
 
-    // Generate sequential continuous feedback ID (FB-00001, FB-00002, FB-00003...)
+    // Generate sequential continuous feedback ID starting from FB-00 (FB-00, FB-01, FB-02...)
     let id = '';
     try {
       const [maxRows] = await db.query(`
         SELECT id FROM Feedback 
-        WHERE id LIKE 'FB-%' 
+        WHERE id REGEXP '^FB-[0-9]+$' AND LENGTH(id) <= 6
         ORDER BY CAST(SUBSTRING(id, 4) AS UNSIGNED) DESC 
         LIMIT 1
       `);
 
       if (maxRows && maxRows[0] && maxRows[0].id) {
-        const lastNum = parseInt(maxRows[0].id.replace('FB-', ''), 10);
-        if (!isNaN(lastNum) && lastNum > 0) {
-          id = `FB-${String(lastNum + 1).padStart(5, '0')}`;
+        const rawIdStr = String(maxRows[0].id).replace(/^FB-/, '');
+        const lastNum = parseInt(rawIdStr, 10);
+        if (!isNaN(lastNum) && lastNum >= 0) {
+          const nextNum = lastNum + 1;
+          id = `FB-${String(nextNum).padStart(2, '0')}`;
         }
       }
 
       if (!id) {
-        const [countRows] = await db.query(`SELECT COUNT(*) as cnt FROM Feedback`);
-        const nextNum = (countRows && countRows[0] ? Number(countRows[0].cnt) : 0) + 1;
-        id = `FB-${String(nextNum).padStart(5, '0')}`;
+        id = 'FB-00';
       }
     } catch (e) {
-      id = `FB-${Date.now().toString().slice(-6)}`;
+      id = 'FB-00';
     }
 
     const entryDate = getISTDateString();
+    const entryTime = getISTTimeString();
     const dateFormatted = new Date().toLocaleDateString('en-GB');
 
     const finalCustName = customerName || custName || 'Anonymous';
@@ -327,19 +351,19 @@ exports.submitFeedback = async (req, res) => {
         INSERT INTO Feedback (
           id, date, source, area, yourVoice, custName, custMobile, custDob,
           q0, q1, q2, q3, q4, q5, q6, q7,
-          status, entryDate, customerName, mobile, dob, sectionId, answers, voice, isNegative
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'new', ?, ?, ?, ?, ?, ?, ?, ?)
+          status, entryDate, entryTime, customerName, mobile, dob, sectionId, answers, voice, isNegative
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'new', ?, ?, ?, ?, ?, ?, ?, ?, ?)
       `, [
         id, dateFormatted, finalSource, finalArea, compiledVoice, finalCustName, finalMobile, finalDob,
         q0 || null, q1 || null, q2 || null, q3 || null, q4 || null, q5 || null, q6 || null, q7 || null,
-        entryDate, finalCustName, finalMobile, finalDob, sectionId || null, JSON.stringify(answers || {}), compiledVoice, isNegative ? 1 : 0
+        entryDate, entryTime, finalCustName, finalMobile, finalDob, sectionId || null, JSON.stringify(answers || {}), compiledVoice, isNegative ? 1 : 0
       ]);
     } catch (insertErr) {
       console.error('[submitFeedback Primary Insert Error]:', insertErr);
       await db.query(`
-        INSERT INTO Feedback (id, entryDate, customerName, mobile, answers, voice, source, isNegative)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-      `, [id, entryDate, finalCustName, finalMobile, JSON.stringify(answers || {}), compiledVoice, finalSource, isNegative ? 1 : 0]).catch(retryErr => {
+        INSERT INTO Feedback (id, entryDate, entryTime, customerName, mobile, answers, voice, source, isNegative)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `, [id, entryDate, entryTime, finalCustName, finalMobile, JSON.stringify(answers || {}), compiledVoice, finalSource, isNegative ? 1 : 0]).catch(retryErr => {
         console.error('[submitFeedback Retry Insert Error]:', retryErr);
       });
     }
@@ -548,14 +572,12 @@ exports.getCallQueue = async (req, res) => {
         }
       }
 
-      let entryTimeStr = '';
-      if (r.createdAt || r.created_at) {
-        try {
-          const d = new Date(r.createdAt || r.created_at);
-          if (!isNaN(d.getTime())) {
-            entryTimeStr = d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
-          }
-        } catch (e) {}
+      let entryTimeStr = r.entryTime || '';
+      if (!entryTimeStr && (r.createdAt || r.created_at)) {
+        entryTimeStr = getISTTimeString(r.createdAt || r.created_at);
+      }
+      if (!entryTimeStr) {
+        entryTimeStr = getISTTimeString();
       }
 
       return {
@@ -1058,14 +1080,12 @@ exports.getFeedbacks = async (req, res) => {
       const isResolvedStatus = r.status === 'resolved' || r.status === 'closed';
       const isNegEvaluated = isResolvedStatus ? false : evaluateFeedbackEscalation(parsedAnswers, voiceText, r.q0, r.q1, r.q2, r.q3);
 
-      let entryTimeStr = '';
-      if (r.created_at || r.createdAt) {
-        try {
-          const d = new Date(r.created_at || r.createdAt);
-          if (!isNaN(d.getTime())) {
-            entryTimeStr = d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
-          }
-        } catch (e) {}
+      let entryTimeStr = r.entryTime || '';
+      if (!entryTimeStr && (r.created_at || r.createdAt)) {
+        entryTimeStr = getISTTimeString(r.created_at || r.createdAt);
+      }
+      if (!entryTimeStr) {
+        entryTimeStr = getISTTimeString();
       }
 
       return {
