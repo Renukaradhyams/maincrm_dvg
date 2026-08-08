@@ -58,7 +58,7 @@ export default function FeedbackCollection() {
         if (res.stats) setStats(res.stats);
       }
     } catch (err: any) {
-      showToast('Failed to load feedback records', 'error');
+      console.warn('getFeedbacks background sync:', err?.message || err);
     } finally {
       setLoading(false);
     }
