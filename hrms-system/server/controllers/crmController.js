@@ -547,11 +547,23 @@ exports.getCallQueue = async (req, res) => {
           rawDateStr = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
         }
       }
+
+      let entryTimeStr = '';
+      if (r.createdAt || r.created_at) {
+        try {
+          const d = new Date(r.createdAt || r.created_at);
+          if (!isNaN(d.getTime())) {
+            entryTimeStr = d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+          }
+        } catch (e) {}
+      }
+
       return {
         ...r,
         customerName: r.customerName || r.custName || r.customer_name || 'Valued Customer',
         mobile: r.mobile || r.custMobile || r.phone || 'N/A',
         entryDate: rawDateStr,
+        entryTime: entryTimeStr || '10:00 AM',
         status: r.status || 'new',
         attempts: r.attempts || 0
       };
@@ -1046,6 +1058,16 @@ exports.getFeedbacks = async (req, res) => {
       const isResolvedStatus = r.status === 'resolved' || r.status === 'closed';
       const isNegEvaluated = isResolvedStatus ? false : evaluateFeedbackEscalation(parsedAnswers, voiceText, r.q0, r.q1, r.q2, r.q3);
 
+      let entryTimeStr = '';
+      if (r.created_at || r.createdAt) {
+        try {
+          const d = new Date(r.created_at || r.createdAt);
+          if (!isNaN(d.getTime())) {
+            entryTimeStr = d.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+          }
+        } catch (e) {}
+      }
+
       return {
         ...r,
         customerName: r.customerName || r.custName || r.customer_name || r.name || 'Anonymous',
@@ -1053,6 +1075,7 @@ exports.getFeedbacks = async (req, res) => {
         mobile: r.mobile || r.custMobile || r.customerMobile || r.phone || '',
         custMobile: r.custMobile || r.mobile || '',
         entryDate: rawDateStr,
+        entryTime: entryTimeStr || '10:00 AM',
         date: r.date || rawDateStr,
         voice: voiceText,
         yourVoice: voiceText,

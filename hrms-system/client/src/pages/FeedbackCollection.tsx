@@ -390,8 +390,16 @@ export default function FeedbackCollection() {
 
                       return (
                         <tr key={f.id} className="hover:bg-black/5 font-medium transition-colors">
-                          <td className="py-3.5 px-4 text-[#555555] font-mono text-[11px]">
-                            {f.entryDate || (f.createdAt ? new Date(f.createdAt).toISOString().split('T')[0] : 'Today')}
+                          <td className="py-3.5 px-4 text-[#555555]">
+                            <div className="font-bold text-[#1E2D4E] font-mono text-[11px]">
+                              {f.entryDate || 'Today'}
+                            </div>
+                            {f.entryTime && (
+                              <div className="text-[10.5px] text-gray-500 font-semibold flex items-center gap-1 mt-0.5">
+                                <Clock className="w-3 h-3 text-[#C9952A]" />
+                                <span>{f.entryTime}</span>
+                              </div>
+                            )}
                           </td>
                           <td className="py-3.5 px-4">
                             <div className="font-extrabold text-[#1E2D4E] flex items-center gap-1.5">
@@ -490,7 +498,7 @@ export default function FeedbackCollection() {
                       </span>
                       <span className="flex items-center gap-1.5">
                         <Clock className="w-3.5 h-3.5 text-[#C9952A]" />
-                        Entry Date: <strong>{selectedFeedback.entryDate || 'Today'}</strong>
+                        Collection Time: <strong>{selectedFeedback.entryDate || 'Today'} {selectedFeedback.entryTime ? `at ${selectedFeedback.entryTime}` : ''}</strong>
                       </span>
                       <span className="flex items-center gap-1.5 font-mono text-[11px]">
                         <Hash className="w-3.5 h-3.5 text-[#C9952A]" />

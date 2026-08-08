@@ -321,7 +321,7 @@ export default function FeedbackList() {
                 <thead className="bg-[#1E2D4E] text-white uppercase text-[10.5px] tracking-wider">
                   <tr>
                     <th className="p-4">Customer Details</th>
-                    <th className="p-4">Submission Date</th>
+                    <th className="p-4">Submission Date &amp; Time</th>
                     <th className="p-4">SLA Tracking</th>
                     <th className="p-4">Call Attempts</th>
                     <th className="p-4">Workflow Status</th>
@@ -346,8 +346,16 @@ export default function FeedbackList() {
                           </div>
                         </td>
 
-                        <td className="p-4 text-gray-600 font-mono text-[11px]">
-                          {item.entryDate || 'Today'}
+                        <td className="p-4 text-gray-600">
+                          <div className="font-bold text-[#1E2D4E] font-mono text-[11px]">
+                            {item.entryDate || 'Today'}
+                          </div>
+                          {item.entryTime && (
+                            <div className="text-[10.5px] text-gray-500 font-semibold flex items-center gap-1 mt-0.5">
+                              <Clock className="w-3 h-3 text-[#C9952A]" />
+                              <span>{item.entryTime}</span>
+                            </div>
+                          )}
                         </td>
 
                         <td className="p-4">
