@@ -27,6 +27,12 @@ export default function FeedbackList() {
 
   useEffect(() => {
     fetchCallQueue();
+
+    // Auto-refresh call queue every 5 seconds for real-time synchronization
+    const interval = setInterval(() => {
+      fetchCallQueue();
+    }, 5000);
+    return () => clearInterval(interval);
   }, []);
 
   const handleUpdate = async () => {

@@ -180,6 +180,13 @@ exports.getFeedbackQuestions = async (req, res) => {
   }
 };
 
+function getISTDateString() {
+  const now = new Date();
+  const istOffset = 5.5 * 60 * 60 * 1000;
+  const istDate = new Date(now.getTime() + (now.getTimezoneOffset() * 60000) + istOffset);
+  return istDate.toISOString().split('T')[0];
+}
+
 exports.submitFeedback = async (req, res) => {
   try {
     // Ensure tables exist before inserting
@@ -217,7 +224,7 @@ exports.submitFeedback = async (req, res) => {
 
     const { customerName, mobile, dob, sectionId, answers, likedMost, canImprove, additionalComments, voice, source } = req.body;
     const id = getUUID();
-    const entryDate = new Date().toISOString().split('T')[0];
+    const entryDate = getISTDateString();
     
     let isNegative = false;
     if (answers && typeof answers === 'object') {
@@ -364,7 +371,26 @@ exports.getFeedbackStats = async (req, res) => {
 
 exports.getCallQueue = async (req, res) => {
   try {
-    const [rows] = await db.query('SELECT * FROM CallQueue ORDER BY createdAt DESC');
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS CallQueue (
+        id VARCHAR(64) PRIMARY KEY,
+        feedbackId VARCHAR(64),
+        entryDate VARCHAR(16),
+        customerName VARCHAR(255),
+        mobile VARCHAR(32),
+        status VARCHAR(32) DEFAULT 'new',
+        notes TEXT,
+        attempts INT DEFAULT 0,
+        followUpDate VARCHAR(32),
+        createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    `).catch(() => {});
+
+    const [rows] = await db.query('SELECT * FROM CallQueue ORDER BY entryDate DESC, id DESC').catch(async () => {
+      const [fallback] = await db.query('SELECT * FROM CallQueue ORDER BY id DESC');
+      return [fallback];
+    });
     return res.json({ success: true, callQueue: rows || [] });
   } catch (err) {
     return res.json({ success: true, callQueue: [] });
@@ -594,15 +620,25 @@ exports.getFeedbacks = async (req, res) => {
     await db.query(`ALTER TABLE Feedback ADD COLUMN answers TEXT`).catch(() => {});
     await db.query(`ALTER TABLE Feedback ADD COLUMN voice TEXT`).catch(() => {});
 
-    const { date, isNegative, search } = req.query;
+    const { date, startDate, endDate, isNegative, search } = req.query;
     let sql = 'SELECT * FROM Feedback WHERE 1=1';
     const params = [];
 
     if (date) {
       sql += ' AND entryDate = ?';
       params.push(date);
+    } else {
+      if (startDate) {
+        sql += ' AND entryDate >= ?';
+        params.push(startDate);
+      }
+      if (endDate) {
+        sql += ' AND entryDate <= ?';
+        params.push(endDate);
+      }
     }
-    if (isNegative !== undefined && isNegative !== '') {
+
+    if (isNegative !== undefined && isNegative !== '' && isNegative !== 'all') {
       sql += ' AND isNegative = ?';
       params.push(isNegative === 'true' || isNegative === '1' ? 1 : 0);
     }

@@ -344,7 +344,7 @@ export const API = {
   async upsertFootfall(payload: any) { return apiFetch('/crm/footfall/upsert', { method: 'POST', body: JSON.stringify(payload) }); },
   async getFeedbackQuestions() { return apiFetch('/crm/feedback-questions'); },
   async getFeedbackStats() { return apiFetch('/crm/feedback-stats'); },
-  async getFeedbacks(params?: { date?: string; isNegative?: string; search?: string }) {
+  async getFeedbacks(params?: { date?: string; startDate?: string; endDate?: string; isNegative?: string; search?: string }) {
     const q = new URLSearchParams(params as any).toString();
     return apiFetch(`/crm/feedbacks${q ? `?${q}` : ''}`);
   },

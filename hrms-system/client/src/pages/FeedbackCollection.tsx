@@ -35,19 +35,51 @@ export default function FeedbackCollection() {
   const [stats, setStats] = useState<any>({ total: 0, positive: 0, negative: 0, npsScore: 100 });
   const [loading, setLoading] = useState<boolean>(true);
 
-  // Filters
-  const [search, setSearch] = useState<string>('');
-  const [sentimentFilter, setSentimentFilter] = useState<string>('all'); // all, positive, negative
-  const [dateFilter, setDateFilter] = useState<string>('');
+  // Date Filters: all, today, yesterday, week, month, last_month, custom
+  const [datePreset, setDatePreset] = useState<string>('all');
+  const [startDateInput, setStartDateInput] = useState<string>('');
+  const [endDateInput, setEndDateInput] = useState<string>('');
 
   // Selected Feedback Detail Modal
   const [selectedFeedback, setSelectedFeedback] = useState<any | null>(null);
+
+  const getISTDate = (d: Date = new Date()) => {
+    const istOffset = 5.5 * 60 * 60 * 1000;
+    const istDate = new Date(d.getTime() + (d.getTimezoneOffset() * 60000) + istOffset);
+    return istDate.toISOString().split('T')[0];
+  };
 
   const loadFeedbacks = useCallback(async () => {
     setLoading(true);
     try {
       const params: any = {};
-      if (dateFilter) params.date = dateFilter;
+      const todayStr = getISTDate(new Date());
+
+      if (datePreset === 'today') {
+        params.date = todayStr;
+      } else if (datePreset === 'yesterday') {
+        const y = new Date(Date.now() - 86400000);
+        params.date = getISTDate(y);
+      } else if (datePreset === 'week') {
+        const w = new Date(Date.now() - 6 * 86400000);
+        params.startDate = getISTDate(w);
+        params.endDate = todayStr;
+      } else if (datePreset === 'month') {
+        const now = new Date();
+        const start = new Date(now.getFullYear(), now.getMonth(), 1);
+        params.startDate = getISTDate(start);
+        params.endDate = todayStr;
+      } else if (datePreset === 'last_month') {
+        const now = new Date();
+        const start = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+        const end = new Date(now.getFullYear(), now.getMonth(), 0);
+        params.startDate = getISTDate(start);
+        params.endDate = getISTDate(end);
+      } else if (datePreset === 'custom') {
+        if (startDateInput) params.startDate = startDateInput;
+        if (endDateInput) params.endDate = endDateInput;
+      }
+
       if (sentimentFilter === 'negative') params.isNegative = 'true';
       if (sentimentFilter === 'positive') params.isNegative = 'false';
       if (search.trim()) params.search = search.trim();
@@ -62,7 +94,7 @@ export default function FeedbackCollection() {
     } finally {
       setLoading(false);
     }
-  }, [dateFilter, sentimentFilter, search]);
+  }, [datePreset, startDateInput, endDateInput, sentimentFilter, search]);
 
   useEffect(() => {
     if (!Auth.check()) {
@@ -237,13 +269,41 @@ export default function FeedbackCollection() {
                 <option value="negative">Negative / Needs Follow-up</option>
               </select>
 
-              {/* Date Filter */}
-              <input
-                type="date"
-                value={dateFilter}
-                onChange={(e) => setDateFilter(e.target.value)}
-                className="input-modern text-xs font-semibold py-2"
-              />
+              {/* Date Preset Filter */}
+              <Calendar className="w-3.5 h-3.5 text-[#C9952A] hidden sm:block ml-2" />
+              <select
+                value={datePreset}
+                onChange={(e) => setDatePreset(e.target.value)}
+                className="select-modern text-xs font-bold py-2"
+              >
+                <option value="all">All Time</option>
+                <option value="today">Today</option>
+                <option value="yesterday">Yesterday</option>
+                <option value="week">This Week</option>
+                <option value="month">This Month</option>
+                <option value="last_month">Last Month</option>
+                <option value="custom">Custom Range</option>
+              </select>
+
+              {datePreset === 'custom' && (
+                <div className="flex items-center gap-1.5 animate-fade-in">
+                  <input
+                    type="date"
+                    value={startDateInput}
+                    onChange={(e) => setStartDateInput(e.target.value)}
+                    className="input-modern text-xs font-semibold py-1.5"
+                    placeholder="Start"
+                  />
+                  <span className="text-xs font-bold text-gray-500">to</span>
+                  <input
+                    type="date"
+                    value={endDateInput}
+                    onChange={(e) => setEndDateInput(e.target.value)}
+                    className="input-modern text-xs font-semibold py-1.5"
+                    placeholder="End"
+                  />
+                </div>
+              )}
             </div>
           </div>
 
