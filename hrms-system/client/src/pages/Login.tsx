@@ -13,12 +13,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (Auth.check()) {
-      const sess = Auth.get();
-      if (sess?.role === 'Greeter') {
-        navigate('/footfall', { replace: true });
-      } else {
-        navigate('/dashboard', { replace: true });
-      }
+      navigate('/dashboard', { replace: true });
     }
   }, [navigate]);
 
@@ -43,11 +38,7 @@ export default function LoginPage() {
           token: res.data.token
         });
         showToast('Login successful', 'success');
-        if (res.data.user.role === 'Greeter') {
-          navigate('/footfall', { replace: true });
-        } else {
-          navigate('/dashboard', { replace: true });
-        }
+        navigate('/dashboard', { replace: true });
       } else {
         setErrorMsg(res.message || 'Incorrect username or password. Please try again.');
       }
