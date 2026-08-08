@@ -443,7 +443,42 @@ async function autoInitializeDatabase(pool) {
       "ALTER TABLE candidates ADD COLUMN department VARCHAR(150) NULL",
       "ALTER TABLE candidates ADD COLUMN section VARCHAR(150) NULL",
       "ALTER TABLE selection_offers ADD COLUMN section VARCHAR(150) NULL",
-      "ALTER TABLE selection_offers ADD COLUMN salary VARCHAR(100) NULL"
+      "ALTER TABLE selection_offers ADD COLUMN salary VARCHAR(100) NULL",
+      
+      "ALTER TABLE Feedback ADD COLUMN date VARCHAR(32) NULL",
+      "ALTER TABLE Feedback ADD COLUMN source VARCHAR(32) DEFAULT 'qr'",
+      "ALTER TABLE Feedback ADD COLUMN area VARCHAR(150) NULL",
+      "ALTER TABLE Feedback ADD COLUMN yourVoice TEXT NULL",
+      "ALTER TABLE Feedback ADD COLUMN custName VARCHAR(255) NULL",
+      "ALTER TABLE Feedback ADD COLUMN custMobile VARCHAR(32) NULL",
+      "ALTER TABLE Feedback ADD COLUMN custDob VARCHAR(32) NULL",
+      "ALTER TABLE Feedback ADD COLUMN q0 VARCHAR(255) NULL",
+      "ALTER TABLE Feedback ADD COLUMN q0_other VARCHAR(255) NULL",
+      "ALTER TABLE Feedback ADD COLUMN q1 VARCHAR(255) NULL",
+      "ALTER TABLE Feedback ADD COLUMN q1_other VARCHAR(255) NULL",
+      "ALTER TABLE Feedback ADD COLUMN q2 VARCHAR(255) NULL",
+      "ALTER TABLE Feedback ADD COLUMN q2_other VARCHAR(255) NULL",
+      "ALTER TABLE Feedback ADD COLUMN q3 VARCHAR(255) NULL",
+      "ALTER TABLE Feedback ADD COLUMN q3_other VARCHAR(255) NULL",
+      "ALTER TABLE Feedback ADD COLUMN q4 VARCHAR(255) NULL",
+      "ALTER TABLE Feedback ADD COLUMN q4_other VARCHAR(255) NULL",
+      "ALTER TABLE Feedback ADD COLUMN q5 VARCHAR(255) NULL",
+      "ALTER TABLE Feedback ADD COLUMN q5_other VARCHAR(255) NULL",
+      "ALTER TABLE Feedback ADD COLUMN q6 VARCHAR(255) NULL",
+      "ALTER TABLE Feedback ADD COLUMN q6_other VARCHAR(255) NULL",
+      "ALTER TABLE Feedback ADD COLUMN q7 VARCHAR(255) NULL",
+      "ALTER TABLE Feedback ADD COLUMN q7_other VARCHAR(255) NULL",
+      "ALTER TABLE Feedback ADD COLUMN status VARCHAR(32) DEFAULT 'new'",
+      "ALTER TABLE Feedback ADD COLUMN actionTaken TEXT NULL",
+      "ALTER TABLE Feedback ADD COLUMN created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP",
+      "ALTER TABLE Feedback ADD COLUMN updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP",
+      "ALTER TABLE Feedback ADD COLUMN deleted_at TIMESTAMP NULL",
+      "ALTER TABLE Feedback ADD COLUMN isNegative TINYINT(1) DEFAULT 0",
+      "ALTER TABLE Feedback ADD COLUMN answers TEXT NULL",
+      "ALTER TABLE Feedback ADD COLUMN voice TEXT NULL",
+      "ALTER TABLE Feedback ADD COLUMN entryDate VARCHAR(32) NULL",
+      "ALTER TABLE Feedback ADD COLUMN customerName VARCHAR(255) NULL",
+      "ALTER TABLE Feedback ADD COLUMN mobile VARCHAR(32) NULL"
     ];
 
     for (const sql of migrations) {
@@ -686,22 +721,48 @@ async function autoInitializeDatabase(pool) {
         `, [id, q, opts, pos]);
       }
 
-      // Ensure Feedback and CallQueue tables exist
+      // Ensure Feedback and CallQueue tables exist with full column schemas
       await connection.query(`
         CREATE TABLE IF NOT EXISTS Feedback (
           id VARCHAR(64) PRIMARY KEY,
-          entryDate VARCHAR(16),
-          customerName VARCHAR(255),
-          mobile VARCHAR(32),
-          dob VARCHAR(32),
-          sectionId VARCHAR(64),
-          answers TEXT,
-          voice TEXT,
+          date VARCHAR(32) NULL,
           source VARCHAR(32) DEFAULT 'qr',
+          area VARCHAR(150) NULL,
+          yourVoice TEXT NULL,
+          custName VARCHAR(255) NULL,
+          custMobile VARCHAR(32) NULL,
+          custDob VARCHAR(32) NULL,
+          q0 VARCHAR(255) NULL, q0_other VARCHAR(255) NULL,
+          q1 VARCHAR(255) NULL, q1_other VARCHAR(255) NULL,
+          q2 VARCHAR(255) NULL, q2_other VARCHAR(255) NULL,
+          q3 VARCHAR(255) NULL, q3_other VARCHAR(255) NULL,
+          q4 VARCHAR(255) NULL, q4_other VARCHAR(255) NULL,
+          q5 VARCHAR(255) NULL, q5_other VARCHAR(255) NULL,
+          q6 VARCHAR(255) NULL, q6_other VARCHAR(255) NULL,
+          q7 VARCHAR(255) NULL, q7_other VARCHAR(255) NULL,
+          status VARCHAR(32) DEFAULT 'new',
+          actionTaken TEXT NULL,
+          created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+          deleted_at TIMESTAMP NULL,
           isNegative TINYINT(1) DEFAULT 0,
-          createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+          answers TEXT NULL,
+          voice TEXT NULL,
+          entryDate VARCHAR(32) NULL,
+          customerName VARCHAR(255) NULL,
+          mobile VARCHAR(32) NULL
         ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
       `);
+
+      // Auto-heal / synchronize existing rows between legacy and modern columns
+      await connection.query(`UPDATE Feedback SET customerName = custName WHERE (customerName IS NULL OR customerName = '') AND custName IS NOT NULL AND custName != ''`).catch(() => {});
+      await connection.query(`UPDATE Feedback SET custName = customerName WHERE (custName IS NULL OR custName = '') AND customerName IS NOT NULL AND customerName != ''`).catch(() => {});
+      await connection.query(`UPDATE Feedback SET mobile = custMobile WHERE (mobile IS NULL OR mobile = '') AND custMobile IS NOT NULL AND custMobile != ''`).catch(() => {});
+      await connection.query(`UPDATE Feedback SET custMobile = mobile WHERE (custMobile IS NULL OR custMobile = '') AND mobile IS NOT NULL AND mobile != ''`).catch(() => {});
+      await connection.query(`UPDATE Feedback SET voice = yourVoice WHERE (voice IS NULL OR voice = '') AND yourVoice IS NOT NULL AND yourVoice != ''`).catch(() => {});
+      await connection.query(`UPDATE Feedback SET yourVoice = voice WHERE (yourVoice IS NULL OR yourVoice = '') AND voice IS NOT NULL AND voice != ''`).catch(() => {});
+      await connection.query(`UPDATE Feedback SET entryDate = COALESCE(NULLIF(entryDate, ''), STR_TO_DATE(date, '%d/%m/%Y'), DATE(created_at)) WHERE entryDate IS NULL OR entryDate = ''`).catch(() => {});
+      await connection.query(`UPDATE Feedback SET date = entryDate WHERE (date IS NULL OR date = '') AND entryDate IS NOT NULL AND entryDate != ''`).catch(() => {});
 
       await connection.query(`
         CREATE TABLE IF NOT EXISTS CallQueue (

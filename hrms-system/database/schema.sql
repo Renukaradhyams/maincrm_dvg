@@ -783,3 +783,42 @@ CREATE TABLE IF NOT EXISTS `Broadcast` (
   `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- 54. Feedback (Customer Feedback Repository)
+CREATE TABLE IF NOT EXISTS `Feedback` (
+  `id` VARCHAR(64) PRIMARY KEY,
+  `date` VARCHAR(32) NULL,
+  `source` VARCHAR(32) DEFAULT 'qr',
+  `area` VARCHAR(150) NULL,
+  `yourVoice` TEXT NULL,
+  `custName` VARCHAR(255) NULL,
+  `custMobile` VARCHAR(32) NULL,
+  `custDob` VARCHAR(32) NULL,
+  `q0` VARCHAR(255) NULL,
+  `q0_other` VARCHAR(255) NULL,
+  `q1` VARCHAR(255) NULL,
+  `q1_other` VARCHAR(255) NULL,
+  `q2` VARCHAR(255) NULL,
+  `q2_other` VARCHAR(255) NULL,
+  `q3` VARCHAR(255) NULL,
+  `q3_other` VARCHAR(255) NULL,
+  `q4` VARCHAR(255) NULL,
+  `q4_other` VARCHAR(255) NULL,
+  `q5` VARCHAR(255) NULL,
+  `q5_other` VARCHAR(255) NULL,
+  `q6` VARCHAR(255) NULL,
+  `q6_other` VARCHAR(255) NULL,
+  `q7` VARCHAR(255) NULL,
+  `q7_other` VARCHAR(255) NULL,
+  `status` VARCHAR(32) DEFAULT 'new',
+  `actionTaken` TEXT NULL,
+  `created_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `deleted_at` TIMESTAMP NULL,
+  `isNegative` TINYINT(1) DEFAULT 0,
+  `answers` TEXT NULL,
+  `voice` TEXT NULL,
+  `entryDate` VARCHAR(32) NULL,
+  `customerName` VARCHAR(255) NULL,
+  `mobile` VARCHAR(32) NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+

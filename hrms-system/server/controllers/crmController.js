@@ -193,14 +193,33 @@ exports.submitFeedback = async (req, res) => {
     await db.query(`
       CREATE TABLE IF NOT EXISTS Feedback (
         id VARCHAR(64) PRIMARY KEY,
-        entryDate VARCHAR(16),
+        date VARCHAR(32),
+        source VARCHAR(32) DEFAULT 'qr',
+        area VARCHAR(150),
+        yourVoice TEXT,
+        custName VARCHAR(255),
+        custMobile VARCHAR(32),
+        custDob VARCHAR(32),
+        q0 VARCHAR(255), q0_other VARCHAR(255),
+        q1 VARCHAR(255), q1_other VARCHAR(255),
+        q2 VARCHAR(255), q2_other VARCHAR(255),
+        q3 VARCHAR(255), q3_other VARCHAR(255),
+        q4 VARCHAR(255), q4_other VARCHAR(255),
+        q5 VARCHAR(255), q5_other VARCHAR(255),
+        q6 VARCHAR(255), q6_other VARCHAR(255),
+        q7 VARCHAR(255), q7_other VARCHAR(255),
+        status VARCHAR(32) DEFAULT 'new',
+        actionTaken TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        deleted_at TIMESTAMP NULL,
+        entryDate VARCHAR(32),
         customerName VARCHAR(255),
         mobile VARCHAR(32),
         dob VARCHAR(32),
         sectionId VARCHAR(64),
         answers TEXT,
         voice TEXT,
-        source VARCHAR(32) DEFAULT 'qr',
         isNegative TINYINT(1) DEFAULT 0,
         createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
@@ -222,19 +241,36 @@ exports.submitFeedback = async (req, res) => {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
     `).catch(() => {});
 
-    const { customerName, mobile, dob, sectionId, answers, likedMost, canImprove, additionalComments, voice, source } = req.body;
+    const { 
+      customerName, custName,
+      mobile, custMobile,
+      dob, custDob,
+      sectionId, area,
+      answers, q0, q1, q2, q3, q4, q5, q6, q7,
+      likedMost, canImprove, additionalComments, voice, yourVoice,
+      source 
+    } = req.body;
+
     const id = getUUID();
     const entryDate = getISTDateString();
-    
+    const dateFormatted = new Date().toLocaleDateString('en-GB');
+
+    const finalCustName = customerName || custName || 'Anonymous';
+    const finalMobile = mobile || custMobile || '';
+    const finalDob = dob || custDob || null;
+    const finalArea = area || sectionId || 'Ground Floor';
+    const finalSource = source || 'qr';
+
     const compiledVoice = [
       likedMost ? `Liked Most: ${likedMost}` : '',
       canImprove ? `Can Improve: ${canImprove}` : '',
       additionalComments ? `Comments: ${additionalComments}` : '',
-      voice ? `Voice: ${voice}` : ''
+      voice ? `Voice: ${voice}` : '',
+      yourVoice ? `Voice: ${yourVoice}` : ''
     ].filter(Boolean).join('\n');
 
     let isNegative = false;
-    const fullPayloadString = (JSON.stringify(answers || {}) + ' ' + compiledVoice).toLowerCase();
+    const fullPayloadString = (JSON.stringify(answers || {}) + ' ' + compiledVoice + ' ' + (q0 || '') + ' ' + (q1 || '')).toLowerCase();
     const negKeywords = [
       'dissatisfied', 'very dissatisfied', 'poor', 'very poor', 'no', 'partially',
       'expensive', 'very expensive', 'not very helpful', 'not helpful at all',
@@ -248,26 +284,22 @@ exports.submitFeedback = async (req, res) => {
 
     try {
       await db.query(`
-        INSERT INTO Feedback (id, entryDate, customerName, mobile, dob, sectionId, answers, voice, source, isNegative)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `, [id, entryDate, customerName || 'Anonymous', mobile || '', dob || null, sectionId || null, JSON.stringify(answers || {}), compiledVoice, source || 'qr', isNegative ? 1 : 0]);
+        INSERT INTO Feedback (
+          id, date, source, area, yourVoice, custName, custMobile, custDob,
+          q0, q1, q2, q3, q4, q5, q6, q7,
+          status, entryDate, customerName, mobile, dob, sectionId, answers, voice, isNegative
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'new', ?, ?, ?, ?, ?, ?, ?, ?)
+      `, [
+        id, dateFormatted, finalSource, finalArea, compiledVoice, finalCustName, finalMobile, finalDob,
+        q0 || null, q1 || null, q2 || null, q3 || null, q4 || null, q5 || null, q6 || null, q7 || null,
+        entryDate, finalCustName, finalMobile, finalDob, sectionId || null, JSON.stringify(answers || {}), compiledVoice, isNegative ? 1 : 0
+      ]);
     } catch (insertErr) {
       console.error('[submitFeedback Primary Insert Error]:', insertErr);
-      
-      // Auto-migrate columns if missing on production database
-      await db.query(`ALTER TABLE Feedback ADD COLUMN entryDate VARCHAR(16)`).catch(() => {});
-      await db.query(`ALTER TABLE Feedback ADD COLUMN customerName VARCHAR(255)`).catch(() => {});
-      await db.query(`ALTER TABLE Feedback ADD COLUMN mobile VARCHAR(32)`).catch(() => {});
-      await db.query(`ALTER TABLE Feedback ADD COLUMN answers TEXT`).catch(() => {});
-      await db.query(`ALTER TABLE Feedback ADD COLUMN voice TEXT`).catch(() => {});
-      await db.query(`ALTER TABLE Feedback ADD COLUMN source VARCHAR(32) DEFAULT 'qr'`).catch(() => {});
-      await db.query(`ALTER TABLE Feedback ADD COLUMN isNegative TINYINT(1) DEFAULT 0`).catch(() => {});
-
-      // Retry insertion after column migration
       await db.query(`
         INSERT INTO Feedback (id, entryDate, customerName, mobile, answers, voice, source, isNegative)
         VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-      `, [id, entryDate, customerName || 'Anonymous', mobile || '', JSON.stringify(answers || {}), compiledVoice, source || 'qr', isNegative ? 1 : 0]).catch(retryErr => {
+      `, [id, entryDate, finalCustName, finalMobile, JSON.stringify(answers || {}), compiledVoice, finalSource, isNegative ? 1 : 0]).catch(retryErr => {
         console.error('[submitFeedback Retry Insert Error]:', retryErr);
       });
     }
@@ -277,7 +309,7 @@ exports.submitFeedback = async (req, res) => {
       io.emit('feedback:submitted', {
         id,
         entryDate,
-        customerName: customerName || 'Anonymous',
+        customerName: finalCustName,
         isNegative: !!isNegative
       });
     }
@@ -288,31 +320,15 @@ exports.submitFeedback = async (req, res) => {
         await db.query(`
           INSERT INTO CallQueue (id, feedbackId, entryDate, customerName, mobile, status, notes)
           VALUES (?, ?, ?, ?, ?, 'new', ?)
-        `, [cqId, id, entryDate, customerName || 'Valued Customer', mobile || '', compiledVoice ? `Escalated Feedback: ${compiledVoice}` : 'Negative customer feedback auto-escalated']);
-      } catch (cqErr) {
-        console.error('[submitFeedback CallQueue Insert Error]:', cqErr);
-        
-        await db.query(`ALTER TABLE CallQueue ADD COLUMN feedbackId VARCHAR(64)`).catch(() => {});
-        await db.query(`ALTER TABLE CallQueue ADD COLUMN entryDate VARCHAR(16)`).catch(() => {});
-        await db.query(`ALTER TABLE CallQueue ADD COLUMN customerName VARCHAR(255)`).catch(() => {});
-        await db.query(`ALTER TABLE CallQueue ADD COLUMN mobile VARCHAR(32)`).catch(() => {});
-        await db.query(`ALTER TABLE CallQueue ADD COLUMN status VARCHAR(32) DEFAULT 'new'`).catch(() => {});
-        await db.query(`ALTER TABLE CallQueue ADD COLUMN notes TEXT`).catch(() => {});
-
-        await db.query(`
-          INSERT INTO CallQueue (id, feedbackId, entryDate, customerName, mobile, status, notes)
-          VALUES (?, ?, ?, ?, ?, 'new', ?)
-        `, [cqId, id, entryDate, customerName || 'Valued Customer', mobile || '', compiledVoice ? `Escalated Feedback: ${compiledVoice}` : 'Negative customer feedback auto-escalated']).catch(retryErr => {
-          console.error('[submitFeedback CallQueue Retry Insert Error]:', retryErr);
-        });
-      }
+        `, [cqId, id, entryDate, finalCustName, finalMobile, compiledVoice ? `Escalated Feedback: ${compiledVoice}` : 'Negative customer feedback auto-escalated']);
+      } catch (cqErr) {}
 
       if (io) {
         io.emit('feedback:negative', {
           id,
-          customerName: customerName || 'Valued Customer',
-          mobile: mobile || 'No Mobile',
-          message: `ALERT: Negative customer feedback logged by ${customerName || 'Customer'} (${mobile || 'No Mobile'})`
+          customerName: finalCustName,
+          mobile: finalMobile || 'No Mobile',
+          message: `ALERT: Negative customer feedback logged by ${finalCustName} (${finalMobile || 'No Mobile'})`
         });
       }
     }
@@ -320,45 +336,12 @@ exports.submitFeedback = async (req, res) => {
     return res.json({ success: true, message: 'Thank you for your feedback!' });
   } catch (err) {
     console.error('[submitFeedback Error]', err);
-    // Always return success response to customer kiosk UI even if db logging has warning
     return res.json({ success: true, message: 'Thank you for your feedback!' });
   }
 };
 
 exports.getFeedbackStats = async (req, res) => {
   try {
-    await db.query(`
-      CREATE TABLE IF NOT EXISTS Feedback (
-        id VARCHAR(64) PRIMARY KEY,
-        entryDate VARCHAR(16),
-        customerName VARCHAR(255),
-        mobile VARCHAR(32),
-        dob VARCHAR(32),
-        sectionId VARCHAR(64),
-        answers TEXT,
-        voice TEXT,
-        source VARCHAR(32) DEFAULT 'qr',
-        isNegative TINYINT(1) DEFAULT 0,
-        createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-    `).catch(() => {});
-
-    await db.query(`
-      CREATE TABLE IF NOT EXISTS CallQueue (
-        id VARCHAR(64) PRIMARY KEY,
-        feedbackId VARCHAR(64),
-        entryDate VARCHAR(16),
-        customerName VARCHAR(255),
-        mobile VARCHAR(32),
-        status VARCHAR(32) DEFAULT 'new',
-        notes TEXT,
-        attempts INT DEFAULT 0,
-        followUpDate VARCHAR(32),
-        createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-        updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
-      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-    `).catch(() => {});
-
     let total = 0, neg = 0, pendingCallQueue = 0, totalCallQueue = 0;
 
     try {
@@ -374,7 +357,7 @@ exports.getFeedbackStats = async (req, res) => {
         SELECT COUNT(*) as pendingCount 
         FROM Feedback f
         LEFT JOIN CallQueue cq ON (cq.feedbackId = f.id OR cq.id = f.id)
-        WHERE f.isNegative = 1 AND (cq.status IS NULL OR cq.status = 'new')
+        WHERE (f.isNegative = 1 OR cq.id IS NOT NULL) AND (cq.status IS NULL OR cq.status = 'new')
       `);
       if (queueRows && queueRows[0]) {
         pendingCallQueue = Number(queueRows[0].pendingCount) || 0;
@@ -442,20 +425,20 @@ exports.getCallQueue = async (req, res) => {
     await db.query(`ALTER TABLE CallQueue ADD COLUMN customerName VARCHAR(255)`).catch(() => {});
     await db.query(`ALTER TABLE CallQueue ADD COLUMN mobile VARCHAR(32)`).catch(() => {});
 
-    // Auto-sync missing CallQueue entries for negative feedbacks to ensure 100% data completeness
+    // Auto-sync missing CallQueue entries for negative feedbacks (from both QR and Staff sources)
     await db.query(`
       INSERT INTO CallQueue (id, feedbackId, entryDate, customerName, mobile, status, notes)
       SELECT 
         CONCAT('cq_auto_', f.id) as id,
         f.id as feedbackId,
-        COALESCE(f.entryDate, '${getISTDateString()}') as entryDate,
-        COALESCE(f.customerName, 'Valued Customer') as customerName,
-        COALESCE(f.mobile, '') as mobile,
+        COALESCE(NULLIF(f.entryDate, ''), STR_TO_DATE(f.date, '%d/%m/%Y'), '${getISTDateString()}') as entryDate,
+        COALESCE(NULLIF(f.customerName, ''), NULLIF(f.custName, ''), 'Valued Customer') as customerName,
+        COALESCE(NULLIF(f.mobile, ''), NULLIF(f.custMobile, ''), '') as mobile,
         'new' as status,
-        COALESCE(NULLIF(f.voice, ''), 'Negative customer feedback auto-escalated') as notes
+        COALESCE(NULLIF(f.voice, ''), NULLIF(f.yourVoice, ''), 'Negative customer feedback auto-escalated') as notes
       FROM Feedback f
       LEFT JOIN CallQueue cq ON (cq.feedbackId = f.id OR cq.id = f.id)
-      WHERE f.isNegative = 1 AND cq.id IS NULL
+      WHERE (f.isNegative = 1 OR f.status = 'negative' OR LOWER(COALESCE(f.voice, f.yourVoice, '')) LIKE '%dissatisfied%') AND cq.id IS NULL
     `).catch(syncErr => {
       console.warn('[getCallQueue Auto-Sync Notice]:', syncErr.message);
     });
@@ -465,14 +448,14 @@ exports.getCallQueue = async (req, res) => {
       SELECT 
         COALESCE(MAX(cq.id), CONCAT('cq_', f.id)) as id,
         f.id as feedbackId,
-        COALESCE(MAX(cq.entryDate), MAX(f.entryDate), '${getISTDateString()}') as entryDate,
-        COALESCE(MAX(cq.customerName), MAX(f.customerName), 'Valued Customer') as customerName,
-        COALESCE(MAX(cq.mobile), MAX(f.mobile), '') as mobile,
+        COALESCE(MAX(cq.entryDate), MAX(NULLIF(f.entryDate, '')), MAX(NULLIF(f.date, '')), '${getISTDateString()}') as entryDate,
+        COALESCE(MAX(cq.customerName), MAX(NULLIF(f.customerName, '')), MAX(NULLIF(f.custName, '')), 'Valued Customer') as customerName,
+        COALESCE(MAX(cq.mobile), MAX(NULLIF(f.mobile, '')), MAX(NULLIF(f.custMobile, '')), '') as mobile,
         COALESCE(MAX(cq.status), 'new') as status,
-        COALESCE(MAX(NULLIF(cq.notes, '')), MAX(NULLIF(f.voice, '')), 'Negative customer feedback auto-escalated') as notes,
+        COALESCE(MAX(NULLIF(cq.notes, '')), MAX(NULLIF(f.voice, '')), MAX(NULLIF(f.yourVoice, '')), 'Negative customer feedback auto-escalated') as notes,
         COALESCE(MAX(cq.attempts), 0) as attempts,
         MAX(cq.followUpDate) as followUpDate,
-        COALESCE(MAX(cq.createdAt), MAX(f.createdAt)) as createdAt
+        COALESCE(MAX(cq.createdAt), MAX(f.createdAt), MAX(f.created_at)) as createdAt
       FROM Feedback f
       LEFT JOIN CallQueue cq ON (cq.feedbackId = f.id OR cq.id = f.id)
       WHERE (f.isNegative = 1 OR cq.id IS NOT NULL)
@@ -480,15 +463,15 @@ exports.getCallQueue = async (req, res) => {
     const params = [];
 
     if (date) {
-      sql += ' AND (COALESCE(cq.entryDate, f.entryDate) = ?)';
+      sql += ' AND (COALESCE(cq.entryDate, f.entryDate, f.date) = ?)';
       params.push(date);
     } else {
       if (startDate) {
-        sql += ' AND (COALESCE(cq.entryDate, f.entryDate) >= ?)';
+        sql += ' AND (COALESCE(cq.entryDate, f.entryDate, f.date) >= ?)';
         params.push(startDate);
       }
       if (endDate) {
-        sql += ' AND (COALESCE(cq.entryDate, f.entryDate) <= ?)';
+        sql += ' AND (COALESCE(cq.entryDate, f.entryDate, f.date) <= ?)';
         params.push(endDate);
       }
     }
@@ -499,26 +482,35 @@ exports.getCallQueue = async (req, res) => {
     }
 
     if (search) {
-      sql += ' AND (f.customerName LIKE ? OR f.mobile LIKE ? OR f.voice LIKE ? OR cq.notes LIKE ?)';
+      sql += ' AND (f.customerName LIKE ? OR f.custName LIKE ? OR f.mobile LIKE ? OR f.custMobile LIKE ? OR f.voice LIKE ? OR f.yourVoice LIKE ? OR cq.notes LIKE ?)';
       const s = `%${search}%`;
-      params.push(s, s, s, s);
+      params.push(s, s, s, s, s, s, s);
     }
 
-    sql += ' GROUP BY f.id ORDER BY COALESCE(MAX(cq.entryDate), MAX(f.entryDate)) DESC, f.id DESC';
+    sql += ' GROUP BY f.id ORDER BY COALESCE(MAX(cq.entryDate), MAX(f.entryDate), MAX(f.date)) DESC, f.id DESC';
 
     const [rows] = await db.query(sql, params).catch(async () => {
       const [fallback] = await db.query('SELECT * FROM CallQueue ORDER BY id DESC');
       return [fallback];
     });
 
-    const formatted = (rows || []).map(r => ({
-      ...r,
-      customerName: r.customerName || r.customer_name || 'Valued Customer',
-      mobile: r.mobile || r.phone || 'N/A',
-      entryDate: r.entryDate || r.entry_date || (r.createdAt ? new Date(r.createdAt).toISOString().split('T')[0] : getISTDateString()),
-      status: r.status || 'new',
-      attempts: r.attempts || 0
-    }));
+    const formatted = (rows || []).map(r => {
+      let rawDateStr = r.entryDate || r.entry_date || (r.createdAt ? new Date(r.createdAt).toISOString().split('T')[0] : getISTDateString());
+      if (typeof rawDateStr === 'string' && rawDateStr.includes('/')) {
+        const parts = rawDateStr.split('/');
+        if (parts.length === 3) {
+          rawDateStr = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+        }
+      }
+      return {
+        ...r,
+        customerName: r.customerName || r.custName || r.customer_name || 'Valued Customer',
+        mobile: r.mobile || r.custMobile || r.phone || 'N/A',
+        entryDate: rawDateStr,
+        status: r.status || 'new',
+        attempts: r.attempts || 0
+      };
+    });
 
     return res.json({ success: true, callQueue: formatted });
   } catch (err) {
@@ -838,38 +830,82 @@ exports.getFeedbacks = async (req, res) => {
     await db.query(`
       CREATE TABLE IF NOT EXISTS Feedback (
         id VARCHAR(64) PRIMARY KEY,
-        entryDate VARCHAR(16),
+        date VARCHAR(32),
+        source VARCHAR(32) DEFAULT 'qr',
+        area VARCHAR(150),
+        yourVoice TEXT,
+        custName VARCHAR(255),
+        custMobile VARCHAR(32),
+        custDob VARCHAR(32),
+        q0 VARCHAR(255), q0_other VARCHAR(255),
+        q1 VARCHAR(255), q1_other VARCHAR(255),
+        q2 VARCHAR(255), q2_other VARCHAR(255),
+        q3 VARCHAR(255), q3_other VARCHAR(255),
+        q4 VARCHAR(255), q4_other VARCHAR(255),
+        q5 VARCHAR(255), q5_other VARCHAR(255),
+        q6 VARCHAR(255), q6_other VARCHAR(255),
+        q7 VARCHAR(255), q7_other VARCHAR(255),
+        status VARCHAR(32) DEFAULT 'new',
+        actionTaken TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        deleted_at TIMESTAMP NULL,
+        entryDate VARCHAR(32),
         customerName VARCHAR(255),
         mobile VARCHAR(32),
         dob VARCHAR(32),
         sectionId VARCHAR(64),
         answers TEXT,
         voice TEXT,
-        source VARCHAR(32) DEFAULT 'qr',
         isNegative TINYINT(1) DEFAULT 0,
         createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
     `).catch(() => {});
 
-    // Ensure columns exist on legacy tables
-    await db.query(`ALTER TABLE Feedback ADD COLUMN isNegative TINYINT(1) DEFAULT 0`).catch(() => {});
-    await db.query(`ALTER TABLE Feedback ADD COLUMN answers TEXT`).catch(() => {});
-    await db.query(`ALTER TABLE Feedback ADD COLUMN voice TEXT`).catch(() => {});
+    // Ensure columns exist on legacy/altered tables
+    const colsToAdd = [
+      'date VARCHAR(32)',
+      'source VARCHAR(32) DEFAULT "qr"',
+      'area VARCHAR(150)',
+      'yourVoice TEXT',
+      'custName VARCHAR(255)',
+      'custMobile VARCHAR(32)',
+      'custDob VARCHAR(32)',
+      'q0 VARCHAR(255)', 'q0_other VARCHAR(255)',
+      'q1 VARCHAR(255)', 'q1_other VARCHAR(255)',
+      'q2 VARCHAR(255)', 'q2_other VARCHAR(255)',
+      'q3 VARCHAR(255)', 'q3_other VARCHAR(255)',
+      'q4 VARCHAR(255)', 'q4_other VARCHAR(255)',
+      'q5 VARCHAR(255)', 'q5_other VARCHAR(255)',
+      'q6 VARCHAR(255)', 'q6_other VARCHAR(255)',
+      'q7 VARCHAR(255)', 'q7_other VARCHAR(255)',
+      'status VARCHAR(32) DEFAULT "new"',
+      'actionTaken TEXT',
+      'isNegative TINYINT(1) DEFAULT 0',
+      'answers TEXT',
+      'voice TEXT',
+      'entryDate VARCHAR(32)',
+      'customerName VARCHAR(255)',
+      'mobile VARCHAR(32)'
+    ];
+    for (const col of colsToAdd) {
+      await db.query(`ALTER TABLE Feedback ADD COLUMN ${col}`).catch(() => {});
+    }
 
     const { date, startDate, endDate, isNegative, search } = req.query;
     let sql = 'SELECT * FROM Feedback WHERE 1=1';
     const params = [];
 
     if (date) {
-      sql += ' AND entryDate = ?';
-      params.push(date);
+      sql += ' AND (entryDate = ? OR date = ? OR DATE(created_at) = ? OR DATE(createdAt) = ?)';
+      params.push(date, date, date, date);
     } else {
       if (startDate) {
-        sql += ' AND entryDate >= ?';
+        sql += ' AND (COALESCE(NULLIF(entryDate, ""), STR_TO_DATE(date, "%d/%m/%Y"), DATE(createdAt), DATE(created_at)) >= ?)';
         params.push(startDate);
       }
       if (endDate) {
-        sql += ' AND entryDate <= ?';
+        sql += ' AND (COALESCE(NULLIF(entryDate, ""), STR_TO_DATE(date, "%d/%m/%Y"), DATE(createdAt), DATE(created_at)) <= ?)';
         params.push(endDate);
       }
     }
@@ -878,16 +914,16 @@ exports.getFeedbacks = async (req, res) => {
       sql += ' AND isNegative = ?';
       params.push(isNegative === 'true' || isNegative === '1' ? 1 : 0);
     }
+
     if (search) {
-      sql += ' AND (customerName LIKE ? OR mobile LIKE ? OR voice LIKE ? OR answers LIKE ?)';
+      sql += ' AND (customerName LIKE ? OR custName LIKE ? OR mobile LIKE ? OR custMobile LIKE ? OR voice LIKE ? OR yourVoice LIKE ? OR answers LIKE ? OR q0 LIKE ? OR q1 LIKE ? OR q2 LIKE ? OR q3 LIKE ?)';
       const s = `%${search}%`;
-      params.push(s, s, s, s);
+      params.push(s, s, s, s, s, s, s, s, s, s, s);
     }
 
-    sql += ' ORDER BY entryDate DESC, id DESC';
+    sql += ' ORDER BY COALESCE(NULLIF(entryDate, ""), STR_TO_DATE(date, "%d/%m/%Y"), DATE(createdAt), DATE(created_at)) DESC, id DESC';
 
     const [rows] = await db.query(sql, params).catch(async () => {
-      // Fallback ORDER BY id DESC if entryDate query has edge case
       const [fallbackRows] = await db.query('SELECT * FROM Feedback ORDER BY id DESC');
       return [fallbackRows];
     });
@@ -899,11 +935,36 @@ exports.getFeedbacks = async (req, res) => {
       } catch (e) {
         parsedAnswers = {};
       }
+
+      ['q0', 'q1', 'q2', 'q3', 'q4', 'q5', 'q6', 'q7'].forEach(qKey => {
+        if (r[qKey] && !parsedAnswers[qKey]) {
+          parsedAnswers[qKey] = r[qKey];
+        }
+        if (r[`${qKey}_other`] && !parsedAnswers[`${qKey}_other`]) {
+          parsedAnswers[`${qKey}_other`] = r[`${qKey}_other`];
+        }
+      });
+
+      let rawDateStr = r.entryDate || r.date || (r.created_at || r.createdAt ? new Date(r.created_at || r.createdAt).toISOString().split('T')[0] : getISTDateString());
+      if (typeof rawDateStr === 'string' && rawDateStr.includes('/')) {
+        const parts = rawDateStr.split('/');
+        if (parts.length === 3) {
+          rawDateStr = `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
+        }
+      }
+
+      const voiceText = [r.voice, r.yourVoice].filter(Boolean).join('\n').trim();
+
       return {
         ...r,
-        customerName: r.customerName || r.customer_name || r.name || 'Anonymous',
-        mobile: r.mobile || r.customerMobile || r.phone || '',
-        entryDate: r.entryDate || r.entry_date || (r.createdAt ? new Date(r.createdAt).toISOString().split('T')[0] : getISTDateString()),
+        customerName: r.customerName || r.custName || r.customer_name || r.name || 'Anonymous',
+        custName: r.custName || r.customerName || 'Anonymous',
+        mobile: r.mobile || r.custMobile || r.customerMobile || r.phone || '',
+        custMobile: r.custMobile || r.mobile || '',
+        entryDate: rawDateStr,
+        date: r.date || rawDateStr,
+        voice: voiceText,
+        yourVoice: voiceText,
         answers: parsedAnswers,
         isNegative: !!(r.isNegative || r.is_negative)
       };
