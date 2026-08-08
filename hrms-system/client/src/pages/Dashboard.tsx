@@ -212,18 +212,18 @@ export default function DashboardPage() {
 
             <div className="flex flex-wrap items-center gap-2">
               <button 
+                onClick={() => navigate('/feedback-collection')} 
+                className="btn-gold text-xs px-4 py-2 flex items-center gap-1.5 shadow-sm font-extrabold"
+              >
+                <MessageSquare className="w-4 h-4" />
+                <span>Feedback Collection</span>
+              </button>
+              <button 
                 onClick={() => navigate('/attendance')} 
-                className="btn-gold text-xs px-4 py-2 flex items-center gap-1.5 shadow-sm"
+                className="btn-primary text-xs px-4 py-2 flex items-center gap-1.5 shadow-sm font-extrabold"
               >
                 <CalendarCheck className="w-4 h-4" />
                 <span>Mark Attendance</span>
-              </button>
-              <button 
-                onClick={() => navigate('/feedback-list')} 
-                className="btn-primary text-xs px-4 py-2 flex items-center gap-1.5 shadow-sm"
-              >
-                <MessageSquare className="w-4 h-4" />
-                <span>Feedback Call Queue</span>
               </button>
             </div>
           </div>
@@ -244,7 +244,7 @@ export default function DashboardPage() {
               subtext={`Positive: ${feedbackStats.positiveFeedback} • Neg: ${feedbackStats.negativeFeedback}`}
               icon={MessageSquare}
               color="gold"
-              onClick={() => navigate('/feedback-list')}
+              onClick={() => navigate('/feedback-collection')}
             />
             <MetricCard
               title="Pending Call Queue"
@@ -260,7 +260,7 @@ export default function DashboardPage() {
               subtext="Customer feedback rating index"
               icon={Sparkles}
               color="teal"
-              onClick={() => navigate('/feedback-list')}
+              onClick={() => navigate('/feedback-collection')}
             />
           </div>
 
@@ -358,8 +358,9 @@ export default function DashboardPage() {
 
               <div className="space-y-2.5">
                 {[
+                  { label: 'Feedback Collection', path: '/feedback-collection', icon: MessageSquare, desc: 'View collected customer feedbacks & CSAT' },
+                  { label: 'Feedback Call Queue', path: '/feedback-list', icon: MessageSquare, desc: 'View customer survey call queue' },
                   { label: 'Employee Register', path: '/employees', icon: Users, desc: 'Manage full staff directory & profiles' },
-                  { label: 'Feedback Call Queue', path: '/feedback-list', icon: MessageSquare, desc: 'View customer surveys & call queue' },
                   { label: 'Section Allocation', path: '/section-allocation', icon: Building2, desc: 'Assign staff to store floor sections' },
                   { label: 'Staff Attendance', path: '/attendance', icon: CalendarCheck, desc: 'Mark daily attendance register' },
                   { label: 'Cash Settlement Desk', path: '/cash-settlement', icon: DollarSign, desc: 'POS daily cash counter settlement' },
