@@ -157,7 +157,7 @@ export default function PublicFeedback() {
       <div className="max-w-4xl w-full space-y-5">
 
         {/* Luxury Deep Navy to Royal Navy & Gold Hero Section (220-260px Height) */}
-        <div className="card-glass p-6 sm:p-8 rounded-[24px] bg-gradient-to-br from-[#162447] via-[#1F3A6E] to-[#142038] text-white border border-white/20 shadow-2xl relative overflow-hidden flex flex-col justify-between min-h-[230px] sm:min-h-[255px]">
+        <div className="p-6 sm:p-8 rounded-[24px] bg-gradient-to-br from-[#162447] via-[#1F3A6E] to-[#0F172A] text-white border border-white/20 shadow-2xl relative overflow-hidden flex flex-col justify-between min-h-[230px] sm:min-h-[255px]">
           {/* Subtle Decorative Gold Highlight & Shapes */}
           <div className="absolute -top-20 -right-20 w-80 h-80 bg-[#D4A12F]/20 rounded-full blur-3xl pointer-events-none"></div>
           <div className="absolute -bottom-20 -left-20 w-80 h-80 bg-blue-500/10 rounded-full blur-3xl pointer-events-none"></div>
