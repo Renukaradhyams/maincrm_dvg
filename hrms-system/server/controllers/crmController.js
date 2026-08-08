@@ -244,6 +244,16 @@ exports.submitFeedback = async (req, res) => {
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `, [id, entryDate, customerName || 'Anonymous', mobile || '', dob || null, sectionId || null, JSON.stringify(answers || {}), compiledVoice, source || 'qr', isNegative ? 1 : 0]);
 
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('feedback:submitted', {
+        id,
+        entryDate,
+        customerName: customerName || 'Anonymous',
+        isNegative: !!isNegative
+      });
+    }
+
     if (isNegative) {
       const cqId = getUUID();
       await db.query(`
@@ -251,7 +261,6 @@ exports.submitFeedback = async (req, res) => {
         VALUES (?, ?, ?, ?, ?, 'new', ?)
       `, [cqId, id, entryDate, customerName || 'Valued Customer', mobile || '', 'Negative customer feedback auto-escalated']);
 
-      const io = req.app.get('io');
       if (io) {
         io.emit('feedback:negative', {
           id,

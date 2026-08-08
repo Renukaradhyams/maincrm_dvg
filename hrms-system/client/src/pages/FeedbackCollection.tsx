@@ -71,6 +71,12 @@ export default function FeedbackCollection() {
     }
     setSession(Auth.get());
     loadFeedbacks();
+
+    // Auto-refresh every 5 seconds for live feedback collection updates
+    const interval = setInterval(() => {
+      loadFeedbacks();
+    }, 5000);
+    return () => clearInterval(interval);
   }, [navigate, loadFeedbacks]);
 
   // Export CSV Handler
