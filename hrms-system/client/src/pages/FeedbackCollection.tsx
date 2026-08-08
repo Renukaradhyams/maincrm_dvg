@@ -35,7 +35,9 @@ export default function FeedbackCollection() {
   const [stats, setStats] = useState<any>({ total: 0, positive: 0, negative: 0, npsScore: 100 });
   const [loading, setLoading] = useState<boolean>(true);
 
-  // Date Filters: all, today, yesterday, week, month, last_month, custom
+  // Filters
+  const [search, setSearch] = useState<string>('');
+  const [sentimentFilter, setSentimentFilter] = useState<string>('all'); // all, positive, negative
   const [datePreset, setDatePreset] = useState<string>('all');
   const [startDateInput, setStartDateInput] = useState<string>('');
   const [endDateInput, setEndDateInput] = useState<string>('');

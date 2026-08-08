@@ -1,14 +1,26 @@
 import React, { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { Plus, UserPlus, Calendar, Send, UserCheck, Briefcase, FileText, X } from 'lucide-react';
+import { Auth } from '../../services/api';
 
 export default function QuickActionCenter() {
   const navigate = useNavigate();
   const location = useLocation();
   const [open, setOpen] = useState(false);
 
-  // Hide the quick actions menu entirely on the Candidate Entry page
-  if (location.pathname === '/candidate-entry') {
+  const session = Auth.get();
+  const role = session?.role || 'Guest';
+
+  // Hide quick actions floating menu entirely for Greeter role or on Greeter, Footfall, Feedback & Kiosk pages
+  if (
+    role === 'Greeter' ||
+    location.pathname === '/candidate-entry' ||
+    location.pathname === '/greeter' ||
+    location.pathname === '/footfall' ||
+    location.pathname === '/feedback-public' ||
+    location.pathname === '/feedback-qr' ||
+    location.pathname === '/tv'
+  ) {
     return null;
   }
 
