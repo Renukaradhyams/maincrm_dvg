@@ -463,16 +463,16 @@ exports.getCallQueue = async (req, res) => {
     const { date, startDate, endDate, status, search } = req.query;
     let sql = `
       SELECT 
-        COALESCE(cq.id, CONCAT('cq_', f.id)) as id,
+        COALESCE(MAX(cq.id), CONCAT('cq_', f.id)) as id,
         f.id as feedbackId,
-        COALESCE(cq.entryDate, f.entryDate, '${getISTDateString()}') as entryDate,
-        COALESCE(cq.customerName, f.customerName, 'Valued Customer') as customerName,
-        COALESCE(cq.mobile, f.mobile, '') as mobile,
-        COALESCE(cq.status, 'new') as status,
-        COALESCE(NULLIF(cq.notes, ''), NULLIF(f.voice, ''), 'Negative customer feedback auto-escalated') as notes,
-        COALESCE(cq.attempts, 0) as attempts,
-        cq.followUpDate,
-        COALESCE(cq.createdAt, f.createdAt) as createdAt
+        COALESCE(MAX(cq.entryDate), MAX(f.entryDate), '${getISTDateString()}') as entryDate,
+        COALESCE(MAX(cq.customerName), MAX(f.customerName), 'Valued Customer') as customerName,
+        COALESCE(MAX(cq.mobile), MAX(f.mobile), '') as mobile,
+        COALESCE(MAX(cq.status), 'new') as status,
+        COALESCE(MAX(NULLIF(cq.notes, '')), MAX(NULLIF(f.voice, '')), 'Negative customer feedback auto-escalated') as notes,
+        COALESCE(MAX(cq.attempts), 0) as attempts,
+        MAX(cq.followUpDate) as followUpDate,
+        COALESCE(MAX(cq.createdAt), MAX(f.createdAt)) as createdAt
       FROM Feedback f
       LEFT JOIN CallQueue cq ON (cq.feedbackId = f.id OR cq.id = f.id)
       WHERE (f.isNegative = 1 OR cq.id IS NOT NULL)
@@ -504,7 +504,7 @@ exports.getCallQueue = async (req, res) => {
       params.push(s, s, s, s);
     }
 
-    sql += ' ORDER BY COALESCE(cq.entryDate, f.entryDate) DESC, f.id DESC';
+    sql += ' GROUP BY f.id ORDER BY COALESCE(MAX(cq.entryDate), MAX(f.entryDate)) DESC, f.id DESC';
 
     const [rows] = await db.query(sql, params).catch(async () => {
       const [fallback] = await db.query('SELECT * FROM CallQueue ORDER BY id DESC');
@@ -529,25 +529,89 @@ exports.getCallQueue = async (req, res) => {
 
 exports.updateCallQueue = async (req, res) => {
   try {
-    const { id, status, notes, followUpDate } = req.body;
-    const rawFeedbackId = id.startsWith('cq_auto_') ? id.replace('cq_auto_', '') : (id.startsWith('cq_') ? id.replace('cq_', '') : id);
-
-    const [existing] = await db.query('SELECT id FROM CallQueue WHERE id = ? OR feedbackId = ?', [id, rawFeedbackId]).catch(() => [[]]);
-
-    if (existing && existing.length > 0) {
-      await db.query(`
-        UPDATE CallQueue SET status = ?, notes = ?, followUpDate = ?, attempts = attempts + 1, updatedAt = CURRENT_TIMESTAMP WHERE id = ? OR feedbackId = ?
-      `, [status || 'called', notes || '', followUpDate || null, existing[0].id, rawFeedbackId]);
-    } else {
-      await db.query(`
-        INSERT INTO CallQueue (id, feedbackId, entryDate, customerName, mobile, status, notes, attempts)
-        VALUES (?, ?, ?, 'Valued Customer', '', ?, ?, 1)
-      `, [id, rawFeedbackId, getISTDateString(), status || 'called', notes || '']);
+    const { id, feedbackId, status, notes, followUpDate } = req.body || {};
+    
+    // Ensure we have a valid target ID (either id or feedbackId)
+    const targetId = id || feedbackId;
+    if (!targetId) {
+      return res.status(400).json({ success: false, error: 'Missing required call queue or feedback ID' });
     }
 
-    return res.json({ success: true, message: 'Call queue entry updated' });
+    const safeId = String(targetId);
+    const rawFeedbackId = safeId.startsWith('cq_auto_') 
+      ? safeId.replace('cq_auto_', '') 
+      : (safeId.startsWith('cq_') ? safeId.replace('cq_', '') : safeId);
+
+    // Auto-create CallQueue table & missing columns if needed
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS CallQueue (
+        id VARCHAR(64) PRIMARY KEY,
+        feedbackId VARCHAR(64),
+        entryDate VARCHAR(16),
+        customerName VARCHAR(255),
+        mobile VARCHAR(32),
+        status VARCHAR(32) DEFAULT 'new',
+        notes TEXT,
+        attempts INT DEFAULT 0,
+        followUpDate VARCHAR(32),
+        createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    `).catch(() => {});
+
+    await db.query(`ALTER TABLE CallQueue ADD COLUMN feedbackId VARCHAR(64)`).catch(() => {});
+    await db.query(`ALTER TABLE CallQueue ADD COLUMN entryDate VARCHAR(16)`).catch(() => {});
+    await db.query(`ALTER TABLE CallQueue ADD COLUMN customerName VARCHAR(255)`).catch(() => {});
+    await db.query(`ALTER TABLE CallQueue ADD COLUMN mobile VARCHAR(32)`).catch(() => {});
+    await db.query(`ALTER TABLE CallQueue ADD COLUMN status VARCHAR(32) DEFAULT 'new'`).catch(() => {});
+    await db.query(`ALTER TABLE CallQueue ADD COLUMN notes TEXT`).catch(() => {});
+
+    // Try finding existing record in CallQueue
+    const [existing] = await db.query('SELECT id, attempts FROM CallQueue WHERE id = ? OR feedbackId = ? OR id = ?', [safeId, rawFeedbackId, rawFeedbackId]).catch(() => [[]]);
+
+    if (existing && existing.length > 0) {
+      const existingId = existing[0].id;
+      const nextAttempts = (Number(existing[0].attempts) || 0) + 1;
+      await db.query(`
+        UPDATE CallQueue 
+        SET status = ?, notes = ?, followUpDate = ?, attempts = ?, updatedAt = CURRENT_TIMESTAMP 
+        WHERE id = ?
+      `, [status || 'called', notes || '', followUpDate || null, nextAttempts, existingId]);
+    } else {
+      // Pull customerName & mobile from Feedback table if available
+      let cName = 'Valued Customer';
+      let cMob = '';
+      let eDate = getISTDateString();
+
+      try {
+        const [fbRow] = await db.query('SELECT customerName, mobile, entryDate FROM Feedback WHERE id = ?', [rawFeedbackId]);
+        if (fbRow && fbRow[0]) {
+          if (fbRow[0].customerName) cName = fbRow[0].customerName;
+          if (fbRow[0].mobile) cMob = fbRow[0].mobile;
+          if (fbRow[0].entryDate) eDate = fbRow[0].entryDate;
+        }
+      } catch (fbErr) {}
+
+      const newCqId = getUUID();
+      await db.query(`
+        INSERT INTO CallQueue (id, feedbackId, entryDate, customerName, mobile, status, notes, attempts)
+        VALUES (?, ?, ?, ?, ?, ?, ?, 1)
+      `, [newCqId, rawFeedbackId, eDate, cName, cMob, status || 'called', notes || '']);
+    }
+
+    // Also update isNegative = 1 in Feedback table to keep feedback collection in sync
+    await db.query(`UPDATE Feedback SET isNegative = 1 WHERE id = ?`, [rawFeedbackId]).catch(() => {});
+
+    const io = req.app.get('io');
+    if (io) {
+      io.emit('feedback:negative', { id: rawFeedbackId, status: status || 'called' });
+      io.emit('feedback:submitted', { id: rawFeedbackId });
+    }
+
+    return res.json({ success: true, message: 'Call queue entry updated successfully' });
   } catch (err) {
-    return res.status(500).json({ success: false, error: err.message });
+    console.error('[updateCallQueue Error]', err);
+    return res.status(500).json({ success: false, error: err.message || 'Internal server error' });
   }
 };
 
