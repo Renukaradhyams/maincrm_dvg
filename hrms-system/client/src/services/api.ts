@@ -344,6 +344,10 @@ export const API = {
   async upsertFootfall(payload: any) { return apiFetch('/crm/footfall/upsert', { method: 'POST', body: JSON.stringify(payload) }); },
   async getFeedbackQuestions() { return apiFetch('/crm/feedback-questions'); },
   async getFeedbackStats() { return apiFetch('/crm/feedback-stats'); },
+  async getFeedbacks(params?: { date?: string; isNegative?: string; search?: string }) {
+    const q = new URLSearchParams(params as any).toString();
+    return apiFetch(`/crm/feedbacks${q ? `?${q}` : ''}`);
+  },
   async submitFeedback(payload: any) { return apiFetch('/crm/feedback', { method: 'POST', body: JSON.stringify(payload) }); },
   async getCallQueue() { return apiFetch('/crm/call-queue'); },
   async updateCallQueue(payload: any) { return apiFetch('/crm/call-queue/update', { method: 'POST', body: JSON.stringify(payload) }); },

@@ -561,3 +561,77 @@ exports.submitVm = async (req, res) => {
     return res.status(500).json({ success: false, error: err.message });
   }
 };
+
+exports.getFeedbacks = async (req, res) => {
+  try {
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS Feedback (
+        id VARCHAR(64) PRIMARY KEY,
+        entryDate VARCHAR(16),
+        customerName VARCHAR(255),
+        mobile VARCHAR(32),
+        dob VARCHAR(32),
+        sectionId VARCHAR(64),
+        answers TEXT,
+        voice TEXT,
+        source VARCHAR(32) DEFAULT 'qr',
+        isNegative TINYINT(1) DEFAULT 0,
+        createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    `).catch(() => {});
+
+    const { date, isNegative, search } = req.query;
+    let sql = 'SELECT * FROM Feedback WHERE 1=1';
+    const params = [];
+
+    if (date) {
+      sql += ' AND entryDate = ?';
+      params.push(date);
+    }
+    if (isNegative !== undefined && isNegative !== '') {
+      sql += ' AND isNegative = ?';
+      params.push(isNegative === 'true' || isNegative === '1' ? 1 : 0);
+    }
+    if (search) {
+      sql += ' AND (customerName LIKE ? OR mobile LIKE ? OR voice LIKE ? OR answers LIKE ?)';
+      const s = `%${search}%`;
+      params.push(s, s, s, s);
+    }
+
+    sql += ' ORDER BY createdAt DESC';
+
+    const [rows] = await db.query(sql, params);
+
+    const formatted = rows.map(r => {
+      let parsedAnswers = {};
+      try {
+        parsedAnswers = typeof r.answers === 'string' ? JSON.parse(r.answers || '{}') : (r.answers || {});
+      } catch (e) {
+        parsedAnswers = {};
+      }
+      return {
+        ...r,
+        answers: parsedAnswers,
+        isNegative: !!r.isNegative
+      };
+    });
+
+    const total = formatted.length;
+    const negative = formatted.filter(r => r.isNegative).length;
+    const positive = total - negative;
+    const npsScore = total > 0 ? Math.round((positive / total) * 100) : 100;
+
+    return res.json({
+      success: true,
+      feedbacks: formatted,
+      stats: {
+        total,
+        positive,
+        negative,
+        npsScore
+      }
+    });
+  } catch (err) {
+    return res.status(500).json({ success: false, error: err.message, feedbacks: [], stats: { total: 0, positive: 0, negative: 0, npsScore: 100 } });
+  }
+};

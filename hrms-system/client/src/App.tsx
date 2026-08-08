@@ -20,6 +20,7 @@ import Footfall from './pages/Footfall';
 import PublicFeedback from './pages/PublicFeedback';
 import FeedbackQR from './pages/FeedbackQR';
 import FeedbackList from './pages/FeedbackList';
+import FeedbackCollection from './pages/FeedbackCollection';
 import Divert from './pages/Divert';
 import PMView from './pages/PMView';
 import CashSettlement from './pages/CashSettlement';
@@ -40,6 +41,9 @@ export default function App() {
         <Route path="/feedback-public" element={<PublicFeedback />} />
         <Route path="/feedback-qr" element={<FeedbackQR />} />
         <Route path="/feedback-list" element={<FeedbackList />} />
+        <Route path="/feedback-collection" element={<FeedbackCollection />} />
+        <Route path="/feedback-register" element={<FeedbackCollection />} />
+        <Route path="/feedbacks" element={<FeedbackCollection />} />
         <Route path="/divert" element={<Divert />} />
         <Route path="/pm-view" element={<PMView />} />
         <Route path="/cash-settlement" element={<CashSettlement />} />
