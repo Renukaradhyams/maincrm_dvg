@@ -668,18 +668,15 @@ async function autoInitializeDatabase(pool) {
       `);
 
       const defaultQuestions = [
-        ['q1', 'How satisfied are you with your overall shopping experience today?', JSON.stringify(['Very satisfied', 'Satisfied', 'Neutral', 'Dissatisfied', 'Very dissatisfied']), 1],
-        ['q2', 'How would you rate the variety of our collection?', JSON.stringify(['Excellent', 'Good', 'Average', 'Poor', 'Very poor']), 2],
-        ['q3', 'Did you find the product you were looking for?', JSON.stringify(['Yes, exactly what I wanted', 'Yes, with some assistance', 'Partially', 'No']), 3],
-        ['q4', 'How would you rate the quality of our products?', JSON.stringify(['Excellent', 'Good', 'Average', 'Poor', 'Very poor']), 4],
-        ['q5', 'How reasonable were our prices?', JSON.stringify(['Very reasonable', 'Reasonable', 'Neutral', 'Expensive', 'Very expensive']), 5],
-        ['q6', 'How would you rate the behavior and courtesy of our staff?', JSON.stringify(['Excellent', 'Good', 'Average', 'Poor', 'Very poor']), 6],
-        ['q7', 'How helpful was our staff in assisting you?', JSON.stringify(['Extremely helpful', 'Helpful', 'Average', 'Not very helpful', 'Not helpful at all']), 7],
-        ['q8', 'How would you rate the store ambiance and cleanliness?', JSON.stringify(['Excellent', 'Good', 'Average', 'Poor', 'Very poor']), 8],
-        ['q9', 'How easy was it to find products in the store?', JSON.stringify(['Very easy', 'Easy', 'Average', 'Difficult', 'Very difficult']), 9],
-        ['q10', 'How likely are you to visit BSC Exclusive again?', JSON.stringify(['Definitely', 'Probably', 'Not sure', 'Probably not', 'Definitely not']), 10],
-        ['q11', 'How likely are you to recommend BSC Exclusive to your friends and family?', JSON.stringify(['Definitely recommend', 'Probably recommend', 'Neutral', 'Probably not recommend', 'Definitely not recommend']), 11]
+        ['q1', '1. How satisfied are you with your overall shopping experience today?', JSON.stringify(['Very satisfied', 'Satisfied', 'Neutral', 'Dissatisfied', 'Very dissatisfied']), 1],
+        ['q2', '2. Did you find the product you were looking for?', JSON.stringify(['Yes, exactly', 'Yes, with assistance', 'Partially', 'No']), 2],
+        ['q3', '3. How would you rate the quality & variety of our collection?', JSON.stringify(['Excellent', 'Good', 'Average', 'Poor']), 3],
+        ['q4', '4. How would you rate the behavior and helpfulness of our staff?', JSON.stringify(['Extremely helpful', 'Helpful', 'Average', 'Poor']), 4],
+        ['q5', '5. How likely are you to recommend BSC Exclusive to your friends and family?', JSON.stringify(['Definitely recommend', 'Probably recommend', 'Neutral', 'Not recommend']), 5]
       ];
+
+      // Reset old questions position mapping
+      await connection.query(`DELETE FROM FeedbackQuestions WHERE id NOT IN ('q1', 'q2', 'q3', 'q4', 'q5')`).catch(() => {});
 
       for (const [id, q, opts, pos] of defaultQuestions) {
         await connection.query(`
@@ -688,6 +685,39 @@ async function autoInitializeDatabase(pool) {
           ON DUPLICATE KEY UPDATE question = VALUES(question), options = VALUES(options), position = VALUES(position), isActive = TRUE
         `, [id, q, opts, pos]);
       }
+
+      // Ensure Feedback and CallQueue tables exist
+      await connection.query(`
+        CREATE TABLE IF NOT EXISTS Feedback (
+          id VARCHAR(64) PRIMARY KEY,
+          entryDate VARCHAR(16),
+          customerName VARCHAR(255),
+          mobile VARCHAR(32),
+          dob VARCHAR(32),
+          sectionId VARCHAR(64),
+          answers TEXT,
+          voice TEXT,
+          source VARCHAR(32) DEFAULT 'qr',
+          isNegative TINYINT(1) DEFAULT 0,
+          createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+      `);
+
+      await connection.query(`
+        CREATE TABLE IF NOT EXISTS CallQueue (
+          id VARCHAR(64) PRIMARY KEY,
+          feedbackId VARCHAR(64),
+          entryDate VARCHAR(16),
+          customerName VARCHAR(255),
+          mobile VARCHAR(32),
+          status VARCHAR(32) DEFAULT 'new',
+          notes TEXT,
+          attempts INT DEFAULT 0,
+          followUpDate VARCHAR(32),
+          createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+          updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+      `);
 
       logDebug(`[Auto DB Initializer] Verified Sections & FeedbackQuestions tables`);
     } catch (e) {

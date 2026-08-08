@@ -4,16 +4,10 @@ import { API } from '../services/api';
 
 const defaultQuestions = [
   { id: 'q1', question: '1. How satisfied are you with your overall shopping experience today?', options: ['Very satisfied', 'Satisfied', 'Neutral', 'Dissatisfied', 'Very dissatisfied'] },
-  { id: 'q2', question: '2. How would you rate the variety of our collection?', options: ['Excellent', 'Good', 'Average', 'Poor', 'Very poor'] },
-  { id: 'q3', question: '3. Did you find the product you were looking for?', options: ['Yes, exactly what I wanted', 'Yes, with some assistance', 'Partially', 'No'] },
-  { id: 'q4', question: '4. How would you rate the quality of our products?', options: ['Excellent', 'Good', 'Average', 'Poor', 'Very poor'] },
-  { id: 'q5', question: '5. How reasonable were our prices?', options: ['Very reasonable', 'Reasonable', 'Neutral', 'Expensive', 'Very expensive'] },
-  { id: 'q6', question: '6. How would you rate the behavior and courtesy of our staff?', options: ['Excellent', 'Good', 'Average', 'Poor', 'Very poor'] },
-  { id: 'q7', question: '7. How helpful was our staff in assisting you?', options: ['Extremely helpful', 'Helpful', 'Average', 'Not very helpful', 'Not helpful at all'] },
-  { id: 'q8', question: '8. How would you rate the store ambiance and cleanliness?', options: ['Excellent', 'Good', 'Average', 'Poor', 'Very poor'] },
-  { id: 'q9', question: '9. How easy was it to find products in the store?', options: ['Very easy', 'Easy', 'Average', 'Difficult', 'Very difficult'] },
-  { id: 'q10', question: '10. How likely are you to visit BSC Exclusive again?', options: ['Definitely', 'Probably', 'Not sure', 'Probably not', 'Definitely not'] },
-  { id: 'q11', question: '11. How likely are you to recommend BSC Exclusive to your friends and family?', options: ['Definitely recommend', 'Probably recommend', 'Neutral', 'Probably not recommend', 'Definitely not recommend'] }
+  { id: 'q2', question: '2. Did you find the product you were looking for?', options: ['Yes, exactly', 'Yes, with assistance', 'Partially', 'No'] },
+  { id: 'q3', question: '3. How would you rate the quality & variety of our collection?', options: ['Excellent', 'Good', 'Average', 'Poor'] },
+  { id: 'q4', question: '4. How would you rate the behavior and helpfulness of our staff?', options: ['Extremely helpful', 'Helpful', 'Average', 'Poor'] },
+  { id: 'q5', question: '5. How likely are you to recommend BSC Exclusive to your friends and family?', options: ['Definitely recommend', 'Probably recommend', 'Neutral', 'Not recommend'] }
 ];
 
 export default function PublicFeedback() {

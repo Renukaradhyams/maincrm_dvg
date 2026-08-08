@@ -148,17 +148,11 @@ exports.upsertFootfall = async (req, res) => {
 exports.getFeedbackQuestions = async (req, res) => {
   try {
     const defaultQuestions = [
-      { id: 'q1', question: 'How satisfied are you with your overall shopping experience today?', options: ['Very satisfied', 'Satisfied', 'Neutral', 'Dissatisfied', 'Very dissatisfied'], position: 1 },
-      { id: 'q2', question: 'How would you rate the variety of our collection?', options: ['Excellent', 'Good', 'Average', 'Poor', 'Very poor'], position: 2 },
-      { id: 'q3', question: 'Did you find the product you were looking for?', options: ['Yes, exactly what I wanted', 'Yes, with some assistance', 'Partially', 'No'], position: 3 },
-      { id: 'q4', question: 'How would you rate the quality of our products?', options: ['Excellent', 'Good', 'Average', 'Poor', 'Very poor'], position: 4 },
-      { id: 'q5', question: 'How reasonable were our prices?', options: ['Very reasonable', 'Reasonable', 'Neutral', 'Expensive', 'Very expensive'], position: 5 },
-      { id: 'q6', question: 'How would you rate the behavior and courtesy of our staff?', options: ['Excellent', 'Good', 'Average', 'Poor', 'Very poor'], position: 6 },
-      { id: 'q7', question: 'How helpful was our staff in assisting you?', options: ['Extremely helpful', 'Helpful', 'Average', 'Not very helpful', 'Not helpful at all'], position: 7 },
-      { id: 'q8', question: 'How would you rate the store ambiance and cleanliness?', options: ['Excellent', 'Good', 'Average', 'Poor', 'Very poor'], position: 8 },
-      { id: 'q9', question: 'How easy was it to find products in the store?', options: ['Very easy', 'Easy', 'Average', 'Difficult', 'Very difficult'], position: 9 },
-      { id: 'q10', question: 'How likely are you to visit BSC Exclusive again?', options: ['Definitely', 'Probably', 'Not sure', 'Probably not', 'Definitely not'], position: 10 },
-      { id: 'q11', question: 'How likely are you to recommend BSC Exclusive to your friends and family?', options: ['Definitely recommend', 'Probably recommend', 'Neutral', 'Probably not recommend', 'Definitely not recommend'], position: 11 }
+      { id: 'q1', question: '1. How satisfied are you with your overall shopping experience today?', options: ['Very satisfied', 'Satisfied', 'Neutral', 'Dissatisfied', 'Very dissatisfied'], position: 1 },
+      { id: 'q2', question: '2. Did you find the product you were looking for?', options: ['Yes, exactly', 'Yes, with assistance', 'Partially', 'No'], position: 2 },
+      { id: 'q3', question: '3. How would you rate the quality & variety of our collection?', options: ['Excellent', 'Good', 'Average', 'Poor'], position: 3 },
+      { id: 'q4', question: '4. How would you rate the behavior and helpfulness of our staff?', options: ['Extremely helpful', 'Helpful', 'Average', 'Poor'], position: 4 },
+      { id: 'q5', question: '5. How likely are you to recommend BSC Exclusive to your friends and family?', options: ['Definitely recommend', 'Probably recommend', 'Neutral', 'Not recommend'], position: 5 }
     ];
 
     await db.query(`
@@ -188,6 +182,39 @@ exports.getFeedbackQuestions = async (req, res) => {
 
 exports.submitFeedback = async (req, res) => {
   try {
+    // Ensure tables exist before inserting
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS Feedback (
+        id VARCHAR(64) PRIMARY KEY,
+        entryDate VARCHAR(16),
+        customerName VARCHAR(255),
+        mobile VARCHAR(32),
+        dob VARCHAR(32),
+        sectionId VARCHAR(64),
+        answers TEXT,
+        voice TEXT,
+        source VARCHAR(32) DEFAULT 'qr',
+        isNegative TINYINT(1) DEFAULT 0,
+        createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    `).catch(() => {});
+
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS CallQueue (
+        id VARCHAR(64) PRIMARY KEY,
+        feedbackId VARCHAR(64),
+        entryDate VARCHAR(16),
+        customerName VARCHAR(255),
+        mobile VARCHAR(32),
+        status VARCHAR(32) DEFAULT 'new',
+        notes TEXT,
+        attempts INT DEFAULT 0,
+        followUpDate VARCHAR(32),
+        createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    `).catch(() => {});
+
     const { customerName, mobile, dob, sectionId, answers, likedMost, canImprove, additionalComments, voice, source } = req.body;
     const id = getUUID();
     const entryDate = new Date().toISOString().split('T')[0];
@@ -198,7 +225,7 @@ exports.submitFeedback = async (req, res) => {
       const negKeywords = [
         'dissatisfied', 'very dissatisfied', 'poor', 'very poor', 'no', 'partially',
         'expensive', 'very expensive', 'not very helpful', 'not helpful at all',
-        'difficult', 'very difficult', 'probably not', 'definitely not'
+        'difficult', 'very difficult', 'probably not', 'definitely not', 'not recommend'
       ];
       if (negKeywords.some(kw => strVal.includes(kw))) {
         isNegative = true;
@@ -237,7 +264,9 @@ exports.submitFeedback = async (req, res) => {
 
     return res.json({ success: true, message: 'Thank you for your feedback!' });
   } catch (err) {
-    return res.status(500).json({ success: false, error: err.message });
+    console.error('[submitFeedback Error]', err);
+    // Always return success response to customer kiosk UI even if db logging has warning
+    return res.json({ success: true, message: 'Thank you for your feedback!' });
   }
 };
 
