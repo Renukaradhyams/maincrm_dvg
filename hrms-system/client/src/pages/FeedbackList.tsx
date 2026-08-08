@@ -116,7 +116,7 @@ export default function FeedbackList() {
 
   const handleOpenCallModal = (item: any) => {
     setSelectedItem(item);
-    setNotes('');
+    setNotes(item.actionTaken || item.notes || '');
     setCallOutcome('Connected');
     setIssueCategory('Staff Courtesy');
     setStatus(item.status === 'resolved' ? 'resolved' : 'called');

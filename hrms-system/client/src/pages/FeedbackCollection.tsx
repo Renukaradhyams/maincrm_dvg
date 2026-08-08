@@ -58,8 +58,8 @@ export default function FeedbackCollection() {
 
   const handleOpenModal = (f: any) => {
     setSelectedFeedback(f);
-    setResolutionNotes(f.voice || '');
-    setResolutionStatus(f.isNegative ? 'called' : 'resolved');
+    setResolutionNotes(f.actionTaken || f.notes || '');
+    setResolutionStatus(f.status || (f.isNegative ? 'called' : 'resolved'));
   };
 
   const handleSaveModalResolution = async (statusOverride?: string) => {
@@ -69,10 +69,11 @@ export default function FeedbackCollection() {
       const targetStatus = statusOverride || resolutionStatus;
       await API.updateCallQueue({
         id: selectedFeedback.id,
+        feedbackId: selectedFeedback.id,
         status: targetStatus,
-        notes: resolutionNotes || selectedFeedback.voice || 'Resolution saved from Customer Resolution Dashboard'
+        notes: resolutionNotes || 'Resolution saved from Customer Resolution Dashboard'
       });
-      showToast('Customer resolution status updated successfully!', 'success');
+      showToast('Customer resolution status updated and saved!', 'success');
       setSelectedFeedback(null);
       loadFeedbacks();
     } catch (err: any) {

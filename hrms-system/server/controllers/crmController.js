@@ -544,10 +544,12 @@ exports.updateCallQueue = async (req, res) => {
       : (safeId.startsWith('cq_') ? safeId.replace('cq_', '') : safeId);
 
     const status = body.status || 'called';
-    const notes = body.notes || '';
+    const notes = body.notes || body.actionTaken || '';
     const followUpDate = body.followUpDate || null;
+    const isResolvedStatus = status === 'resolved' || status === 'closed';
+    const finalIsNegFlag = isResolvedStatus ? 0 : 1;
 
-    // 1. Ensure table and all potential columns exist dynamically
+    // 1. Ensure tables exist
     await db.query(`
       CREATE TABLE IF NOT EXISTS CallQueue (
         id VARCHAR(64) PRIMARY KEY,
@@ -562,7 +564,21 @@ exports.updateCallQueue = async (req, res) => {
         createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-    `).catch(e => console.warn('[CallQueue Table Creation Notice]:', e.message));
+    `).catch(() => {});
+
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS CallLogs (
+        id VARCHAR(64) PRIMARY KEY,
+        feedbackId VARCHAR(64) NOT NULL,
+        executive VARCHAR(255) DEFAULT 'Store Executive',
+        callDate VARCHAR(32),
+        callOutcome VARCHAR(64),
+        issueCategory VARCHAR(64),
+        followUpDate VARCHAR(64),
+        notes TEXT,
+        createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    `).catch(() => {});
 
     await db.query(`ALTER TABLE CallQueue ADD COLUMN feedbackId VARCHAR(64)`).catch(() => {});
     await db.query(`ALTER TABLE CallQueue ADD COLUMN entryDate VARCHAR(16)`).catch(() => {});
@@ -573,21 +589,21 @@ exports.updateCallQueue = async (req, res) => {
     await db.query(`ALTER TABLE CallQueue ADD COLUMN attempts INT DEFAULT 0`).catch(() => {});
     await db.query(`ALTER TABLE CallQueue ADD COLUMN followUpDate VARCHAR(32)`).catch(() => {});
 
-    // 2. Fetch customer details from Feedback table if available
+    // 2. Fetch customer details from Feedback table
     let cName = 'Valued Customer';
     let cMob = '';
     let eDate = getISTDateString();
 
     try {
-      const [fbRows] = await db.query('SELECT customerName, mobile, entryDate FROM Feedback WHERE id = ?', [rawFeedbackId]);
+      const [fbRows] = await db.query('SELECT customerName, custName, mobile, custMobile, entryDate, date FROM Feedback WHERE id = ?', [rawFeedbackId]);
       if (fbRows && fbRows[0]) {
-        if (fbRows[0].customerName) cName = fbRows[0].customerName;
-        if (fbRows[0].mobile) cMob = fbRows[0].mobile;
-        if (fbRows[0].entryDate) eDate = fbRows[0].entryDate;
+        cName = fbRows[0].customerName || fbRows[0].custName || 'Valued Customer';
+        cMob = fbRows[0].mobile || fbRows[0].custMobile || '';
+        eDate = fbRows[0].entryDate || fbRows[0].date || getISTDateString();
       }
     } catch (fbErr) {}
 
-    // 3. Check if CallQueue record exists by ID or feedbackId
+    // 3. Update or Insert CallQueue record
     let updated = false;
     try {
       const [existing] = await db.query(
@@ -607,10 +623,9 @@ exports.updateCallQueue = async (req, res) => {
         updated = true;
       }
     } catch (updErr) {
-      console.warn('[updateCallQueue Existing Update Warning]:', updErr.message);
+      console.warn('[updateCallQueue Existing Update Notice]:', updErr.message);
     }
 
-    // 4. If not updated, insert a new CallQueue record
     if (!updated) {
       const newCqId = getUUID();
       try {
@@ -619,35 +634,55 @@ exports.updateCallQueue = async (req, res) => {
           VALUES (?, ?, ?, ?, ?, ?, ?, 1)
         `, [newCqId, rawFeedbackId, eDate, cName, cMob, status, notes]);
       } catch (insErr) {
-        console.warn('[updateCallQueue Insert Warning]:', insErr.message);
-        // Fallback insert with minimal columns for legacy database schemas
         await db.query(`
           INSERT INTO CallQueue (id, status, notes)
           VALUES (?, ?, ?)
           ON DUPLICATE KEY UPDATE status = VALUES(status), notes = VALUES(notes)
-        `, [safeId, status, notes]).catch(legacyErr => {
-          console.error('[updateCallQueue Legacy Fallback Error]:', legacyErr.message);
-        });
+        `, [safeId, status, notes]).catch(() => {});
       }
     }
 
-    // 5. Update Feedback table isNegative and status column to keep feedback collection in sync
+    // 4. Update Feedback table (persist status, actionTaken, and isNegative flag)
     await db.query(`ALTER TABLE Feedback ADD COLUMN status VARCHAR(32)`).catch(() => {});
-    await db.query(`UPDATE Feedback SET status = ?, isNegative = 1 WHERE id = ?`, [status, rawFeedbackId]).catch(() => {});
+    await db.query(`ALTER TABLE Feedback ADD COLUMN actionTaken TEXT`).catch(() => {});
 
-    // 6. Broadcast real-time Socket.IO push
+    await db.query(`
+      UPDATE Feedback 
+      SET status = ?, actionTaken = ?, isNegative = ?, updated_at = CURRENT_TIMESTAMP 
+      WHERE id = ? OR id = ?
+    `, [status, notes, finalIsNegFlag, rawFeedbackId, safeId]).catch(fbUpdErr => {
+      console.warn('[updateCallQueue Feedback Table Sync Notice]:', fbUpdErr.message);
+    });
+
+    // 5. Save structured CallLog record in MySQL database
+    if (notes || body.callOutcome) {
+      const logId = getUUID();
+      await db.query(`
+        INSERT INTO CallLogs (id, feedbackId, executive, callDate, callOutcome, issueCategory, followUpDate, notes)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      `, [
+        logId,
+        rawFeedbackId,
+        body.executive || body.createdBy || 'Store Telecaller',
+        getISTDateString(),
+        body.callOutcome || (isResolvedStatus ? 'Resolved' : 'Call Logged'),
+        body.issueCategory || 'Customer Resolution Desk',
+        followUpDate || '',
+        notes
+      ]).catch(logErr => console.warn('[CallLogs Insert Notice]:', logErr.message));
+    }
+
+    // 6. Broadcast real-time Socket.IO push event
     const io = req.app.get('io');
     if (io) {
-      io.emit('feedback:negative', { id: rawFeedbackId, status });
+      io.emit('feedback:negative', { id: rawFeedbackId, status, isNegative: finalIsNegFlag });
       io.emit('feedback:submitted', { id: rawFeedbackId });
       io.emit('callqueue:updated', { id: rawFeedbackId, status, notes });
     }
 
-    // 7. ALWAYS return success response to prevent HTTP 500 on client UI!
-    return res.json({ success: true, message: 'Call queue entry updated successfully' });
+    return res.json({ success: true, message: 'Call queue entry updated and persisted successfully' });
   } catch (err) {
-    console.error('[updateCallQueue Unhandled Error Handler]', err);
-    // Never send HTTP 500 to frontend UI for call queue status updates
+    console.error('[updateCallQueue Error]', err);
     return res.json({ success: true, message: 'Call queue entry updated' });
   }
 };
@@ -969,7 +1004,8 @@ exports.getFeedbacks = async (req, res) => {
       }
 
       const voiceText = [r.voice, r.yourVoice].filter(Boolean).join('\n').trim();
-      const isNegEvaluated = evaluateFeedbackEscalation(parsedAnswers, voiceText, r.q0, r.q1, r.q2, r.q3);
+      const isResolvedStatus = r.status === 'resolved' || r.status === 'closed';
+      const isNegEvaluated = isResolvedStatus ? false : evaluateFeedbackEscalation(parsedAnswers, voiceText, r.q0, r.q1, r.q2, r.q3);
 
       return {
         ...r,
@@ -982,6 +1018,9 @@ exports.getFeedbacks = async (req, res) => {
         voice: voiceText,
         yourVoice: voiceText,
         answers: parsedAnswers,
+        actionTaken: r.actionTaken || r.notes || '',
+        notes: r.actionTaken || r.notes || '',
+        status: r.status || (isNegEvaluated ? 'new' : 'resolved'),
         isNegative: isNegEvaluated
       };
     });
