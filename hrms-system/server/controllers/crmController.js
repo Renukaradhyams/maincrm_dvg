@@ -277,7 +277,32 @@ exports.submitFeedback = async (req, res) => {
       source 
     } = req.body;
 
-    const id = getUUID();
+    // Generate sequential continuous feedback ID (FB-00001, FB-00002, FB-00003...)
+    let id = '';
+    try {
+      const [maxRows] = await db.query(`
+        SELECT id FROM Feedback 
+        WHERE id LIKE 'FB-%' 
+        ORDER BY CAST(SUBSTRING(id, 4) AS UNSIGNED) DESC 
+        LIMIT 1
+      `);
+
+      if (maxRows && maxRows[0] && maxRows[0].id) {
+        const lastNum = parseInt(maxRows[0].id.replace('FB-', ''), 10);
+        if (!isNaN(lastNum) && lastNum > 0) {
+          id = `FB-${String(lastNum + 1).padStart(5, '0')}`;
+        }
+      }
+
+      if (!id) {
+        const [countRows] = await db.query(`SELECT COUNT(*) as cnt FROM Feedback`);
+        const nextNum = (countRows && countRows[0] ? Number(countRows[0].cnt) : 0) + 1;
+        id = `FB-${String(nextNum).padStart(5, '0')}`;
+      }
+    } catch (e) {
+      id = `FB-${Date.now().toString().slice(-6)}`;
+    }
+
     const entryDate = getISTDateString();
     const dateFormatted = new Date().toLocaleDateString('en-GB');
 
@@ -330,7 +355,7 @@ exports.submitFeedback = async (req, res) => {
     }
 
     if (isNegative) {
-      const cqId = getUUID();
+      const cqId = `cq_${id}`;
       try {
         await db.query(`
           INSERT INTO CallQueue (id, feedbackId, entryDate, customerName, mobile, status, notes)
@@ -348,7 +373,12 @@ exports.submitFeedback = async (req, res) => {
       }
     }
 
-    return res.json({ success: true, message: 'Thank you for your feedback!' });
+    return res.json({ 
+      success: true, 
+      id,
+      refNo: id,
+      message: 'Thank you for your feedback!' 
+    });
   } catch (err) {
     console.error('[submitFeedback Error]', err);
     return res.json({ success: true, message: 'Thank you for your feedback!' });
@@ -946,9 +976,17 @@ exports.getFeedbacks = async (req, res) => {
     let sql = 'SELECT * FROM Feedback WHERE 1=1';
     const params = [];
 
-    if (date) {
-      sql += ' AND (entryDate = ? OR date = ? OR DATE(created_at) = ? OR DATE(createdAt) = ?)';
-      params.push(date, date, date, date);
+    let altDate = date || '';
+    if (date && typeof date === 'string') {
+      if (date.includes('-') && date.split('-').length === 3) {
+        const [y, m, d] = date.split('-');
+        altDate = `${d.padStart(2, '0')}/${m.padStart(2, '0')}/${y}`;
+      } else if (date.includes('/') && date.split('/').length === 3) {
+        const [d, m, y] = date.split('/');
+        altDate = `${y}-${m.padStart(2, '0')}-${d.padStart(2, '0')}`;
+      }
+      sql += ' AND (entryDate = ? OR entryDate = ? OR date = ? OR date = ? OR DATE(created_at) = ? OR DATE(createdAt) = ?)';
+      params.push(date, altDate, date, altDate, date, altDate);
     } else {
       if (startDate) {
         sql += ' AND (COALESCE(NULLIF(entryDate, ""), STR_TO_DATE(date, "%d/%m/%Y"), DATE(createdAt), DATE(created_at)) >= ?)';
@@ -973,12 +1011,13 @@ exports.getFeedbacks = async (req, res) => {
 
     sql += ' ORDER BY COALESCE(NULLIF(entryDate, ""), STR_TO_DATE(date, "%d/%m/%Y"), DATE(createdAt), DATE(created_at)) DESC, id DESC';
 
-    const [rows] = await db.query(sql, params).catch(async () => {
+    const [rows] = await db.query(sql, params).catch(async (err) => {
+      console.warn('[getFeedbacks Query Fail, fallback executing]:', err.message);
       const [fallbackRows] = await db.query('SELECT * FROM Feedback ORDER BY id DESC');
       return [fallbackRows];
     });
 
-    const formatted = (rows || []).map(r => {
+    let formatted = (rows || []).map(r => {
       let parsedAnswers = {};
       try {
         parsedAnswers = typeof r.answers === 'string' ? JSON.parse(r.answers || '{}') : (r.answers || {});
@@ -1024,6 +1063,14 @@ exports.getFeedbacks = async (req, res) => {
         isNegative: isNegEvaluated
       };
     });
+
+    // In-memory secondary date filter to guarantee exact match even if DB fallback triggered
+    if (date && typeof date === 'string') {
+      formatted = formatted.filter(r => 
+        r.entryDate === date || r.entryDate === altDate ||
+        r.date === date || r.date === altDate
+      );
+    }
 
     const total = formatted.length;
     const negative = formatted.filter(r => r.isNegative).length;

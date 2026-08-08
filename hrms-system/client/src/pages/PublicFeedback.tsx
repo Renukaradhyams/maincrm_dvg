@@ -71,7 +71,7 @@ export default function PublicFeedback() {
     e.preventDefault();
     setSubmitting(true);
     try {
-      await API.submitFeedback({
+      const res: any = await API.submitFeedback({
         customerName,
         custName: customerName,
         mobile,
@@ -82,7 +82,7 @@ export default function PublicFeedback() {
         additionalComments,
         source: 'qr'
       });
-      setRefNo(`BSC-FB-${Math.random().toString(36).substring(2, 8).toUpperCase()}`);
+      setRefNo(res?.id || res?.refNo || `FB-${Math.random().toString(36).substring(2, 8).toUpperCase()}`);
       setSubmitted(true);
     } catch (err) {
       console.error(err);
