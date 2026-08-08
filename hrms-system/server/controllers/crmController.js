@@ -246,10 +246,31 @@ exports.submitFeedback = async (req, res) => {
       voice ? `Voice: ${voice}` : ''
     ].filter(Boolean).join('\n');
 
-    await db.query(`
-      INSERT INTO Feedback (id, entryDate, customerName, mobile, dob, sectionId, answers, voice, source, isNegative)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `, [id, entryDate, customerName || 'Anonymous', mobile || '', dob || null, sectionId || null, JSON.stringify(answers || {}), compiledVoice, source || 'qr', isNegative ? 1 : 0]);
+    try {
+      await db.query(`
+        INSERT INTO Feedback (id, entryDate, customerName, mobile, dob, sectionId, answers, voice, source, isNegative)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      `, [id, entryDate, customerName || 'Anonymous', mobile || '', dob || null, sectionId || null, JSON.stringify(answers || {}), compiledVoice, source || 'qr', isNegative ? 1 : 0]);
+    } catch (insertErr) {
+      console.error('[submitFeedback Primary Insert Error]:', insertErr);
+      
+      // Auto-migrate columns if missing on production database
+      await db.query(`ALTER TABLE Feedback ADD COLUMN entryDate VARCHAR(16)`).catch(() => {});
+      await db.query(`ALTER TABLE Feedback ADD COLUMN customerName VARCHAR(255)`).catch(() => {});
+      await db.query(`ALTER TABLE Feedback ADD COLUMN mobile VARCHAR(32)`).catch(() => {});
+      await db.query(`ALTER TABLE Feedback ADD COLUMN answers TEXT`).catch(() => {});
+      await db.query(`ALTER TABLE Feedback ADD COLUMN voice TEXT`).catch(() => {});
+      await db.query(`ALTER TABLE Feedback ADD COLUMN source VARCHAR(32) DEFAULT 'qr'`).catch(() => {});
+      await db.query(`ALTER TABLE Feedback ADD COLUMN isNegative TINYINT(1) DEFAULT 0`).catch(() => {});
+
+      // Retry insertion after column migration
+      await db.query(`
+        INSERT INTO Feedback (id, entryDate, customerName, mobile, answers, voice, source, isNegative)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      `, [id, entryDate, customerName || 'Anonymous', mobile || '', JSON.stringify(answers || {}), compiledVoice, source || 'qr', isNegative ? 1 : 0]).catch(retryErr => {
+        console.error('[submitFeedback Retry Insert Error]:', retryErr);
+      });
+    }
 
     const io = req.app.get('io');
     if (io) {
@@ -665,8 +686,11 @@ exports.getFeedbacks = async (req, res) => {
       }
       return {
         ...r,
+        customerName: r.customerName || r.customer_name || r.name || 'Anonymous',
+        mobile: r.mobile || r.customerMobile || r.phone || '',
+        entryDate: r.entryDate || r.entry_date || (r.createdAt ? new Date(r.createdAt).toISOString().split('T')[0] : getISTDateString()),
         answers: parsedAnswers,
-        isNegative: !!r.isNegative
+        isNegative: !!(r.isNegative || r.is_negative)
       };
     });
 
