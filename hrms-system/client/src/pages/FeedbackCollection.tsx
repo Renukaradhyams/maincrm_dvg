@@ -22,7 +22,15 @@ import {
   AlertCircle, 
   CheckCircle,
   Sparkles,
-  ArrowUpRight
+  ArrowUpRight,
+  AlertTriangle,
+  CheckCircle2,
+  Clock,
+  Hash,
+  ShieldAlert,
+  FileText,
+  Send,
+  UserCheck
 } from 'lucide-react';
 
 export default function FeedbackCollection() {
@@ -44,6 +52,35 @@ export default function FeedbackCollection() {
 
   // Selected Feedback Detail Modal
   const [selectedFeedback, setSelectedFeedback] = useState<any | null>(null);
+  const [resolutionStatus, setResolutionStatus] = useState<string>('called');
+  const [resolutionNotes, setResolutionNotes] = useState<string>('');
+  const [savingResolution, setSavingResolution] = useState<boolean>(false);
+
+  const handleOpenModal = (f: any) => {
+    setSelectedFeedback(f);
+    setResolutionNotes(f.voice || '');
+    setResolutionStatus(f.isNegative ? 'called' : 'resolved');
+  };
+
+  const handleSaveModalResolution = async (statusOverride?: string) => {
+    if (!selectedFeedback) return;
+    setSavingResolution(true);
+    try {
+      const targetStatus = statusOverride || resolutionStatus;
+      await API.updateCallQueue({
+        id: selectedFeedback.id,
+        status: targetStatus,
+        notes: resolutionNotes || selectedFeedback.voice || 'Resolution saved from Customer Resolution Dashboard'
+      });
+      showToast('Customer resolution status updated successfully!', 'success');
+      setSelectedFeedback(null);
+      loadFeedbacks();
+    } catch (err: any) {
+      showToast('Failed to update resolution: ' + (err.message || 'Error'), 'error');
+    } finally {
+      setSavingResolution(false);
+    }
+  };
 
   const getISTDate = (d: Date = new Date()) => {
     const istOffset = 5.5 * 60 * 60 * 1000;
@@ -391,7 +428,7 @@ export default function FeedbackCollection() {
                           </td>
                           <td className="py-3.5 px-4 text-right">
                             <button
-                              onClick={() => setSelectedFeedback(f)}
+                              onClick={() => handleOpenModal(f)}
                               className="px-3 py-1.5 rounded-xl border border-[#1E2D4E] text-[#1E2D4E] font-extrabold text-[11px] hover:bg-[#1E2D4E] hover:text-white transition-all flex items-center gap-1 ml-auto shadow-xs"
                             >
                               <Eye className="w-3.5 h-3.5" /> View Details
@@ -406,70 +443,347 @@ export default function FeedbackCollection() {
             )}
           </div>
 
-          {/* Full Customer Feedback Dossier Modal */}
+          {/* Executive Customer Resolution Dashboard Modal */}
           {selectedFeedback && (
-            <div className="fixed inset-0 bg-[#1E2D4E]/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-              <div className="card-glass max-w-xl w-full p-6 space-y-5 animate-scale-in max-h-[90vh] overflow-y-auto">
-                {/* Modal Header */}
-                <div className="flex items-start justify-between border-b border-[#e2dfd7] pb-3">
-                  <div>
-                    <div className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full bg-[#1E2D4E] text-[#C9952A] text-[9.5px] font-black uppercase tracking-widest mb-1">
-                      Feedback Response Dossier
+            <div className="fixed inset-0 bg-[#1E2D4E]/70 backdrop-blur-md z-50 flex items-center justify-center p-4 sm:p-6 overflow-y-auto animate-fade-in">
+              <div className="card-glass max-w-5xl w-full p-6 sm:p-8 space-y-6 animate-scale-in max-h-[92vh] overflow-y-auto shadow-2xl rounded-3xl border border-white/40 bg-white/95 text-[#1E2D4E]">
+                
+                {/* 1. Header Redesign */}
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#e2dfd7] pb-5">
+                  <div className="space-y-1">
+                    <div className="flex flex-wrap items-center gap-2 mb-1.5">
+                      {selectedFeedback.isNegative ? (
+                        <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-rose-500/10 text-rose-700 border border-rose-300/50 text-[10px] font-black uppercase tracking-widest">
+                          <AlertTriangle className="w-3 h-3 text-rose-600" /> Escalated Feedback
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-emerald-500/10 text-emerald-700 border border-emerald-300/50 text-[10px] font-black uppercase tracking-widest">
+                          <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Satisfied Customer Survey
+                        </span>
+                      )}
+                      <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-[#1E2D4E] text-[#C9952A] text-[10px] font-black uppercase tracking-widest">
+                        BSC EXCLUSIVE RETAIL
+                      </span>
                     </div>
-                    <h3 className="text-lg font-black text-[#1E2D4E]">{selectedFeedback.customerName || 'Anonymous Customer'}</h3>
-                    <p className="text-xs text-gray-500 font-mono">Mobile: {selectedFeedback.mobile || 'Not Provided'} · Entry: {selectedFeedback.entryDate || 'Today'}</p>
+
+                    <h2 className="text-2xl sm:text-3xl font-black tracking-tight text-[#1E2D4E]">
+                      {selectedFeedback.customerName || 'Valued Customer'}
+                    </h2>
+
+                    <div className="flex flex-wrap items-center gap-4 text-xs font-semibold text-[#666666] pt-1">
+                      <span className="flex items-center gap-1.5 font-mono">
+                        <Phone className="w-3.5 h-3.5 text-[#C9952A]" />
+                        {selectedFeedback.mobile || 'No Mobile Provided'}
+                      </span>
+                      <span className="flex items-center gap-1.5">
+                        <Clock className="w-3.5 h-3.5 text-[#C9952A]" />
+                        Entry Date: <strong>{selectedFeedback.entryDate || 'Today'}</strong>
+                      </span>
+                      <span className="flex items-center gap-1.5 font-mono text-[11px]">
+                        <Hash className="w-3.5 h-3.5 text-[#C9952A]" />
+                        ID: #FB-{String(selectedFeedback.id).slice(0, 8).toUpperCase()}
+                      </span>
+                    </div>
                   </div>
-                  <button
-                    onClick={() => setSelectedFeedback(null)}
-                    className="p-1.5 rounded-xl text-gray-400 hover:text-gray-700 hover:bg-gray-100"
-                  >
-                    <X className="w-5 h-5" />
-                  </button>
+
+                  <div className="flex items-center gap-3 self-start md:self-auto">
+                    {selectedFeedback.isNegative ? (
+                      <span className="px-3.5 py-1.5 rounded-xl bg-rose-600 text-white font-extrabold text-xs shadow-sm flex items-center gap-1.5">
+                        <ShieldAlert className="w-4 h-4" /> High Priority Escalation
+                      </span>
+                    ) : (
+                      <span className="px-3.5 py-1.5 rounded-xl bg-emerald-600 text-white font-extrabold text-xs shadow-sm flex items-center gap-1.5">
+                        <CheckCircle2 className="w-4 h-4" /> Normal Priority
+                      </span>
+                    )}
+
+                    <button
+                      onClick={() => setSelectedFeedback(null)}
+                      className="p-2 rounded-2xl bg-gray-100 hover:bg-gray-200 text-gray-500 hover:text-gray-900 transition-all shadow-xs"
+                      title="Close Modal"
+                    >
+                      <X className="w-5 h-5" />
+                    </button>
+                  </div>
                 </div>
 
-                {/* Sentiment Badge & Warning */}
+                {/* 2. Escalation Alert Card (for negative feedback) */}
                 {selectedFeedback.isNegative && (
-                  <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-2xl flex items-center gap-3 text-rose-800 text-xs font-bold">
-                    <AlertCircle className="w-5 h-5 text-rose-600 shrink-0" />
-                    <div>
-                      <div className="font-extrabold">Escalated to Telecaller Call Queue</div>
-                      <div className="text-[11px] text-rose-700 font-medium">This customer response has been flagged for resolution by staff.</div>
+                  <div className="card-glass p-4 rounded-2xl border-l-4 border-l-rose-500 bg-rose-500/10 border border-rose-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm">
+                    <div className="flex items-center gap-3">
+                      <div className="p-2.5 rounded-xl bg-rose-600 text-white shadow-sm shrink-0">
+                        <AlertTriangle className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <div className="text-xs font-black uppercase text-rose-900 tracking-wider">Escalated to Telecaller Call Queue</div>
+                        <p className="text-xs font-semibold text-rose-800 mt-0.5">
+                          Automatic escalation triggered due to negative ratings or dissatisfaction keywords. Follow-up action required by store executive.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-2 shrink-0 self-end sm:self-auto">
+                      <span className="px-3 py-1 rounded-full bg-rose-200 text-rose-900 font-extrabold text-xs">
+                        Status: Pending Follow-up
+                      </span>
                     </div>
                   </div>
                 )}
 
-                {/* Questionnaire Responses Breakdown */}
-                <div className="space-y-3">
-                  <h4 className="text-xs font-black uppercase text-[#1E2D4E] tracking-wider border-b pb-1">Questionnaire Responses</h4>
-                  <div className="space-y-2 text-xs">
-                    {Object.entries(selectedFeedback.answers || {}).map(([qKey, value]: [string, any]) => (
-                      <div key={qKey} className="p-3 rounded-xl bg-white border border-[#e2dfd7] flex items-center justify-between gap-3">
-                        <span className="font-extrabold text-[#1E2D4E]">Question ID ({qKey}):</span>
-                        <span className="px-2.5 py-1 rounded-lg bg-[#1E2D4E] text-white font-extrabold text-xs">{String(value)}</span>
+                {/* 3. Customer Satisfaction Summary (5 Metric Cards Grid) */}
+                <div className="space-y-2">
+                  <h4 className="text-xs font-black uppercase tracking-wider text-[#1E2D4E]/70 flex items-center gap-1.5">
+                    <Star className="w-3.5 h-3.5 text-[#C9952A]" />
+                    <span>Customer Satisfaction Summary</span>
+                  </h4>
+
+                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-3">
+                    <div className="p-3.5 rounded-2xl bg-white border border-[#e2dfd7] shadow-xs text-center">
+                      <div className="text-[10px] font-extrabold uppercase text-[#777777] tracking-wider">Overall CSAT</div>
+                      <div className={`text-sm font-black mt-1.5 ${selectedFeedback.isNegative ? 'text-rose-600' : 'text-emerald-600'}`}>
+                        {selectedFeedback.isNegative ? 'Dissatisfied' : 'Satisfied'}
                       </div>
-                    ))}
+                    </div>
+
+                    <div className="p-3.5 rounded-2xl bg-white border border-[#e2dfd7] shadow-xs text-center">
+                      <div className="text-[10px] font-extrabold uppercase text-[#777777] tracking-wider">Product Found</div>
+                      <div className="text-sm font-black text-[#1E2D4E] mt-1.5">
+                        {selectedFeedback.answers?.q3 || selectedFeedback.answers?.q2 || 'Yes'}
+                      </div>
+                    </div>
+
+                    <div className="p-3.5 rounded-2xl bg-white border border-[#e2dfd7] shadow-xs text-center">
+                      <div className="text-[10px] font-extrabold uppercase text-[#777777] tracking-wider">Staff Courtesy</div>
+                      <div className="text-sm font-black text-[#1E2D4E] mt-1.5">
+                        {selectedFeedback.answers?.q6 || selectedFeedback.answers?.q4 || 'Good'}
+                      </div>
+                    </div>
+
+                    <div className="p-3.5 rounded-2xl bg-white border border-[#e2dfd7] shadow-xs text-center">
+                      <div className="text-[10px] font-extrabold uppercase text-[#777777] tracking-wider">Price Rating</div>
+                      <div className="text-sm font-black text-[#1E2D4E] mt-1.5">
+                        {selectedFeedback.answers?.q5 || 'Reasonable'}
+                      </div>
+                    </div>
+
+                    <div className="p-3.5 rounded-2xl bg-white border border-[#e2dfd7] shadow-xs text-center col-span-2 sm:col-span-1">
+                      <div className="text-[10px] font-extrabold uppercase text-[#777777] tracking-wider">Escalation</div>
+                      <div className={`text-sm font-black mt-1.5 ${selectedFeedback.isNegative ? 'text-rose-600' : 'text-emerald-600'}`}>
+                        {selectedFeedback.isNegative ? 'Level 1 High' : 'None'}
+                      </div>
+                    </div>
                   </div>
                 </div>
 
-                {/* Voice of Customer Text */}
-                {selectedFeedback.voice && (
-                  <div className="space-y-2">
-                    <h4 className="text-xs font-black uppercase text-[#1E2D4E] tracking-wider border-b pb-1">Voice of Customer Notes</h4>
-                    <div className="p-3.5 rounded-2xl bg-[#F9F7F4] border border-[#e2dfd7] text-xs font-medium text-[#1E2D4E] whitespace-pre-line">
-                      {selectedFeedback.voice}
+                {/* 4. Questionnaire Responses Grid */}
+                <div className="space-y-3">
+                  <h4 className="text-xs font-black uppercase tracking-wider text-[#1E2D4E]/70 flex items-center gap-1.5">
+                    <FileText className="w-3.5 h-3.5 text-[#C9952A]" />
+                    <span>Survey Questionnaire Responses</span>
+                  </h4>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {Object.entries(selectedFeedback.answers || {}).length > 0 ? (
+                      Object.entries(selectedFeedback.answers).map(([key, val]: [string, any], idx) => {
+                        const valStr = String(val);
+                        const isNegVal = ['dissatisfied', 'very dissatisfied', 'poor', 'very poor', 'no', 'partially', 'expensive'].some(k => valStr.toLowerCase().includes(k));
+                        
+                        return (
+                          <div key={idx} className="p-3.5 rounded-2xl bg-white border border-[#e2dfd7] flex items-center justify-between gap-3 shadow-xs">
+                            <span className="text-xs font-bold text-[#1E2D4E] uppercase tracking-wider">
+                              Question {idx + 1} ({key})
+                            </span>
+                            <span className={`px-3 py-1 rounded-xl text-xs font-extrabold shadow-2xs ${
+                              isNegVal 
+                                ? 'bg-rose-100 text-rose-800 border border-rose-300/40' 
+                                : 'bg-emerald-100 text-emerald-800 border border-emerald-300/40'
+                            }`}>
+                              {valStr}
+                            </span>
+                          </div>
+                        );
+                      })
+                    ) : (
+                      <div className="p-4 rounded-2xl bg-gray-50 text-xs text-gray-500 font-semibold text-center col-span-2">
+                        Standard survey answers recorded via QR Portal.
+                      </div>
+                    )}
+                  </div>
+                </div>
+
+                {/* 5. Voice of Customer Section (3 Accent Cards) */}
+                <div className="space-y-3">
+                  <h4 className="text-xs font-black uppercase tracking-wider text-[#1E2D4E]/70 flex items-center gap-1.5">
+                    <MessageSquare className="w-3.5 h-3.5 text-[#C9952A]" />
+                    <span>Voice of Customer Detailed Notes</span>
+                  </h4>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="p-4 rounded-2xl bg-emerald-500/5 border border-emerald-300/60 space-y-1.5">
+                      <div className="text-[11px] font-black text-emerald-800 uppercase tracking-wider flex items-center gap-1.5">
+                        <ThumbsUp className="w-3.5 h-3.5 text-emerald-600" />
+                        <span>Liked Most</span>
+                      </div>
+                      <p className="text-xs font-semibold text-emerald-950 whitespace-pre-line">
+                        {selectedFeedback.voice?.includes('Liked Most:') 
+                          ? selectedFeedback.voice.split('Liked Most:')[1]?.split('\n')[0] 
+                          : 'Satisfied with overall experience.'}
+                      </p>
+                    </div>
+
+                    <div className="p-4 rounded-2xl bg-amber-500/5 border border-amber-300/60 space-y-1.5">
+                      <div className="text-[11px] font-black text-amber-800 uppercase tracking-wider flex items-center gap-1.5">
+                        <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                        <span>Can Improve</span>
+                      </div>
+                      <p className="text-xs font-semibold text-amber-950 whitespace-pre-line">
+                        {selectedFeedback.voice?.includes('Can Improve:') 
+                          ? selectedFeedback.voice.split('Can Improve:')[1]?.split('\n')[0] 
+                          : 'No specific improvements noted.'}
+                      </p>
+                    </div>
+
+                    <div className="p-4 rounded-2xl bg-blue-500/5 border border-blue-300/60 space-y-1.5">
+                      <div className="text-[11px] font-black text-blue-800 uppercase tracking-wider flex items-center gap-1.5">
+                        <FileText className="w-3.5 h-3.5 text-blue-600" />
+                        <span>Additional Comments</span>
+                      </div>
+                      <p className="text-xs font-semibold text-blue-950 whitespace-pre-line">
+                        {selectedFeedback.voice || 'Customer submitted feedback directly through store QR Kiosk.'}
+                      </p>
                     </div>
                   </div>
-                )}
+                </div>
 
-                {/* Modal Footer */}
-                <div className="flex justify-end pt-3 border-t border-[#e2dfd7]">
+                {/* 6. Action Timeline */}
+                <div className="space-y-3 pt-1 border-t border-[#e2dfd7]">
+                  <h4 className="text-xs font-black uppercase tracking-wider text-[#1E2D4E]/70 flex items-center gap-1.5">
+                    <Clock className="w-3.5 h-3.5 text-[#C9952A]" />
+                    <span>Customer Journey Escalation Timeline</span>
+                  </h4>
+
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                    <div className="p-3 rounded-2xl bg-[#F9F7F4] border border-[#e2dfd7] text-center">
+                      <div className="w-6 h-6 rounded-full bg-emerald-500 text-white font-bold text-xs flex items-center justify-center mx-auto mb-1">1</div>
+                      <div className="text-[11px] font-extrabold text-[#1E2D4E]">QR Submitted</div>
+                      <div className="text-[9.5px] text-gray-500 font-mono mt-0.5">{selectedFeedback.entryDate || 'Today'}</div>
+                    </div>
+
+                    <div className="p-3 rounded-2xl bg-[#F9F7F4] border border-[#e2dfd7] text-center">
+                      <div className={`w-6 h-6 rounded-full font-bold text-xs flex items-center justify-center mx-auto mb-1 ${
+                        selectedFeedback.isNegative ? 'bg-amber-500 text-white' : 'bg-emerald-500 text-white'
+                      }`}>2</div>
+                      <div className="text-[11px] font-extrabold text-[#1E2D4E]">Sentiment Analyzed</div>
+                      <div className="text-[9.5px] text-gray-500 mt-0.5">{selectedFeedback.isNegative ? 'Escalation Triggered' : 'Positive Rating'}</div>
+                    </div>
+
+                    <div className="p-3 rounded-2xl bg-[#F9F7F4] border border-[#e2dfd7] text-center">
+                      <div className={`w-6 h-6 rounded-full font-bold text-xs flex items-center justify-center mx-auto mb-1 ${
+                        selectedFeedback.isNegative ? 'bg-rose-500 text-white' : 'bg-gray-300 text-gray-700'
+                      }`}>3</div>
+                      <div className="text-[11px] font-extrabold text-[#1E2D4E]">Call Queue Added</div>
+                      <div className="text-[9.5px] text-gray-500 mt-0.5">{selectedFeedback.isNegative ? 'Telecaller Pending' : 'N/A'}</div>
+                    </div>
+
+                    <div className="p-3 rounded-2xl bg-[#F9F7F4] border border-[#e2dfd7] text-center">
+                      <div className="w-6 h-6 rounded-full bg-[#1E2D4E] text-[#C9952A] font-bold text-xs flex items-center justify-center mx-auto mb-1">4</div>
+                      <div className="text-[11px] font-extrabold text-[#1E2D4E]">Resolution Desk</div>
+                      <div className="text-[9.5px] text-gray-500 mt-0.5">Executive Workspace</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 7. Resolution Workspace */}
+                <div className="p-5 rounded-2xl bg-[#F9F7F4] border border-[#e2dfd7] space-y-4">
+                  <div className="flex items-center justify-between border-b border-[#e2dfd7] pb-2">
+                    <h4 className="text-xs font-black uppercase tracking-wider text-[#1E2D4E] flex items-center gap-2">
+                      <UserCheck className="w-4 h-4 text-[#C9952A]" />
+                      <span>Resolution Workspace & Telecaller Logging</span>
+                    </h4>
+                    <span className="text-[10px] font-bold text-[#777777]">BSC Operational CRM Desk</span>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-[10.5px] font-black uppercase text-[#777777] tracking-wider mb-1">
+                        Follow-Up Action Status
+                      </label>
+                      <select
+                        value={resolutionStatus}
+                        onChange={(e) => setResolutionStatus(e.target.value)}
+                        className="select-modern text-xs font-bold py-2 bg-white"
+                      >
+                        <option value="called">Called - Follow Up Needed</option>
+                        <option value="resolved">Resolved - Customer Satisfied</option>
+                        <option value="escalated">Escalated to Store Manager</option>
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-[10.5px] font-black uppercase text-[#777777] tracking-wider mb-1">
+                        Assigned Executive / Priority
+                      </label>
+                      <input
+                        type="text"
+                        readOnly
+                        value={selectedFeedback.isNegative ? 'Telecaller Team (High Priority)' : 'Floor Manager (Normal Priority)'}
+                        className="input-modern text-xs font-semibold py-2 bg-gray-100"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-[10.5px] font-black uppercase text-[#777777] tracking-wider mb-1">
+                      Internal Telecaller Resolution Notes
+                    </label>
+                    <textarea
+                      rows={3}
+                      value={resolutionNotes}
+                      onChange={(e) => setResolutionNotes(e.target.value)}
+                      placeholder="Enter call details, customer explanation, voucher code issued, or resolution steps..."
+                      className="textarea-modern text-xs font-medium bg-white"
+                    ></textarea>
+                  </div>
+                </div>
+
+                {/* 8. Action Buttons (Modal Footer) */}
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4 border-t border-[#e2dfd7]">
                   <button
                     onClick={() => setSelectedFeedback(null)}
-                    className="btn-primary text-xs px-6 py-2"
+                    className="w-full sm:w-auto px-5 py-2.5 rounded-xl border border-[#e2dfd7] bg-[#F9F7F4] hover:bg-gray-100 text-[#555555] font-extrabold text-xs transition-all shadow-xs"
                   >
-                    Close Dossier
+                    Close Dashboard
                   </button>
+
+                  <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-end">
+                    <button
+                      onClick={() => handleSaveModalResolution('called')}
+                      disabled={savingResolution}
+                      className="px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-extrabold text-xs shadow-md active:scale-95 transition-all"
+                    >
+                      Mark In Progress
+                    </button>
+
+                    <button
+                      onClick={() => handleSaveModalResolution('resolved')}
+                      disabled={savingResolution}
+                      className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold text-xs shadow-md active:scale-95 transition-all flex items-center gap-1.5"
+                    >
+                      <CheckCircle2 className="w-4 h-4" />
+                      <span>Mark Resolved</span>
+                    </button>
+
+                    <button
+                      onClick={() => handleSaveModalResolution()}
+                      disabled={savingResolution}
+                      className="btn-gold text-xs py-2.5 px-6 shadow-md flex items-center gap-1.5"
+                    >
+                      <Send className="w-4 h-4" />
+                      <span>{savingResolution ? 'Saving...' : 'Save Resolution Notes'}</span>
+                    </button>
+                  </div>
                 </div>
+
               </div>
             </div>
           )}
