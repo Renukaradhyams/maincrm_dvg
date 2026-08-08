@@ -154,32 +154,31 @@ export default function PublicFeedback() {
     <div className="min-h-screen bg-[#EDE8DE] py-5 sm:py-8 px-4 sm:px-6 flex justify-center selection:bg-[#D4A12F] selection:text-[#162447]">
       <div className="max-w-4xl w-full space-y-5">
         
-        {/* Luxury Deep Navy to Royal Navy & Gold Hero Section (220-260px Height) */}
-        <div className="card-glass p-6 sm:p-8 rounded-[24px] bg-gradient-to-br from-[#162447] via-[#1F3A6E] to-[#142038] text-white border border-white/20 shadow-2xl relative overflow-hidden flex flex-col justify-between min-h-[230px] sm:min-h-[255px]">
-          {/* Subtle Decorative Gold Highlight & Shapes */}
-          <div className="absolute -top-20 -right-20 w-80 h-80 bg-[#D4A12F]/20 rounded-full blur-3xl pointer-events-none"></div>
-          <div className="absolute -bottom-20 -left-20 w-80 h-80 bg-blue-500/10 rounded-full blur-3xl pointer-events-none"></div>
+        {/* Luxury Deep Navy (#14213D) to Royal Navy (#1F3A6E) & Gold Hero Section (240px Height) */}
+        <div className="card-glass p-6 sm:p-8 rounded-[24px] bg-gradient-to-br from-[#14213D] via-[#1F3A6E] to-[#0F172A] text-white border-2 border-[#D4A12F]/40 shadow-2xl relative overflow-hidden flex flex-col justify-between min-h-[240px] opacity-100">
+          {/* Subtle Gold Glow in Top-Right Corner */}
+          <div className="absolute -top-16 -right-16 w-80 h-80 bg-[#D4A12F]/20 rounded-full blur-3xl pointer-events-none"></div>
 
           <div className="relative z-10 grid grid-cols-1 sm:grid-cols-3 gap-5 items-center">
             
             {/* Left Content Column */}
             <div className="sm:col-span-2 space-y-2.5 text-center sm:text-left">
-              <div className="inline-flex items-center gap-2 px-3.5 py-1 rounded-full bg-[#162447] text-[#D4A12F] text-[11px] font-black uppercase tracking-widest border border-[#D4A12F]/80 shadow-sm">
-                <ShoppingBag className="w-3.5 h-3.5 text-[#D4A12F]" />
+              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-[#14213D] text-[#D4A12F] text-[11px] font-black uppercase tracking-widest border-2 border-[#D4A12F] shadow-md">
+                <ShoppingBag className="w-4 h-4 text-[#D4A12F]" />
                 <span>BSC EXCLUSIVE DAVANAGERE • STORE SURVEY</span>
               </div>
               
-              <h1 className="text-3xl sm:text-4xl lg:text-[42px] font-black text-white tracking-tight leading-tight drop-shadow-md">
+              <h1 className="text-3xl sm:text-4xl lg:text-[40px] font-black text-white tracking-tight leading-tight drop-shadow-lg opacity-100">
                 Customer Experience Survey
               </h1>
               
-              <p className="text-white/85 text-sm sm:text-base font-medium leading-relaxed max-w-xl">
+              <p className="text-white/90 text-sm sm:text-[17px] font-medium leading-relaxed max-w-xl opacity-100">
                 “Help us improve your shopping experience in just one minute.”
               </p>
             </div>
 
-            {/* Right Side Glass Summary Panel with Circular Progress Ring */}
-            <div className="sm:col-span-1 bg-white/10 backdrop-blur-md p-4 sm:p-5 rounded-2xl border border-white/20 flex items-center justify-between sm:flex-col sm:justify-center gap-3 text-center shadow-lg">
+            {/* Right Side Dark Glass Summary Panel with Circular Progress Ring */}
+            <div className="sm:col-span-1 bg-white/10 backdrop-blur-md p-5 rounded-2xl border border-white/20 flex items-center justify-between sm:flex-col sm:justify-center gap-3 text-center shadow-xl">
               
               {/* Circular Progress Ring */}
               <div className="relative w-16 h-16 sm:w-20 sm:h-20 flex items-center justify-center shrink-0">
@@ -203,18 +202,18 @@ export default function PublicFeedback() {
                 </svg>
                 <div className="absolute flex flex-col items-center justify-center">
                   <span className="font-mono text-xs sm:text-sm font-black text-[#D4A12F] drop-shadow-xs">{progressStats.pct}%</span>
-                  <span className="text-[8px] uppercase font-bold text-white/75">Done</span>
+                  <span className="text-[8px] uppercase font-bold text-white/90">Done</span>
                 </div>
               </div>
 
               {/* Stats Summary Panel */}
               <div className="text-right sm:text-center space-y-0.5 text-xs">
                 <div className="flex items-center justify-end sm:justify-center gap-1 text-[11px] font-black text-[#D4A12F]">
-                  <Clock className="w-3 h-3 text-[#D4A12F]" />
+                  <Clock className="w-3.5 h-3.5 text-[#D4A12F]" />
                   <span>Est. Time: 1 Min</span>
                 </div>
-                <div className="text-white/95 text-[11px] font-extrabold">5 Survey Sections</div>
-                <div className="text-white/80 text-[10px] font-semibold">{progressStats.count} of {progressStats.total} Completed</div>
+                <div className="text-white font-extrabold text-[11px]">5 Survey Sections</div>
+                <div className="text-white/90 text-[10px] font-semibold">{progressStats.count} of {progressStats.total} Completed</div>
               </div>
 
             </div>
@@ -222,37 +221,37 @@ export default function PublicFeedback() {
           </div>
 
           {/* Full-Width Animated Section Step Tracker below Hero */}
-          <div className="relative z-10 pt-4 border-t border-white/15 space-y-2">
-            <div className="flex items-center justify-between text-[10.5px] font-extrabold text-white/90 overflow-x-auto gap-1.5 scrollbar-none">
-              <span className={`px-2.5 py-0.5 rounded-full whitespace-nowrap ${customerName && mobile ? 'bg-[#D4A12F] text-[#162447] font-black' : 'bg-white/10 text-white/80'}`}>
+          <div className="relative z-10 pt-4 border-t border-white/20 space-y-2">
+            <div className="flex items-center justify-between text-[11px] font-extrabold text-white/90 overflow-x-auto gap-1.5 scrollbar-none">
+              <span className={`px-2.5 py-0.5 rounded-full whitespace-nowrap ${customerName && mobile ? 'bg-[#D4A12F] text-[#14213D] font-black' : 'bg-white/10 text-white/80'}`}>
                 Details
               </span>
               <span className="text-white/40">·</span>
-              <span className={`px-2.5 py-0.5 rounded-full whitespace-nowrap ${answers['q1'] ? 'bg-[#D4A12F] text-[#162447] font-black' : 'bg-white/10 text-white/80'}`}>
+              <span className={`px-2.5 py-0.5 rounded-full whitespace-nowrap ${answers['q1'] ? 'bg-[#D4A12F] text-[#14213D] font-black' : 'bg-white/10 text-white/80'}`}>
                 Shopping
               </span>
               <span className="text-white/40">·</span>
-              <span className={`px-2.5 py-0.5 rounded-full whitespace-nowrap ${answers['q2'] || answers['q3'] ? 'bg-[#D4A12F] text-[#162447] font-black' : 'bg-white/10 text-white/80'}`}>
+              <span className={`px-2.5 py-0.5 rounded-full whitespace-nowrap ${answers['q2'] || answers['q3'] ? 'bg-[#D4A12F] text-[#14213D] font-black' : 'bg-white/10 text-white/80'}`}>
                 Product
               </span>
               <span className="text-white/40">·</span>
-              <span className={`px-2.5 py-0.5 rounded-full whitespace-nowrap ${answers['q4'] ? 'bg-[#D4A12F] text-[#162447] font-black' : 'bg-white/10 text-white/80'}`}>
+              <span className={`px-2.5 py-0.5 rounded-full whitespace-nowrap ${answers['q4'] ? 'bg-[#D4A12F] text-[#14213D] font-black' : 'bg-white/10 text-white/80'}`}>
                 Staff
               </span>
               <span className="text-white/40">·</span>
-              <span className={`px-2.5 py-0.5 rounded-full whitespace-nowrap ${answers['q5'] ? 'bg-[#D4A12F] text-[#162447] font-black' : 'bg-white/10 text-white/80'}`}>
+              <span className={`px-2.5 py-0.5 rounded-full whitespace-nowrap ${answers['q5'] ? 'bg-[#D4A12F] text-[#14213D] font-black' : 'bg-white/10 text-white/80'}`}>
                 Recommendation
               </span>
               <span className="text-white/40">·</span>
-              <span className={`px-2.5 py-0.5 rounded-full whitespace-nowrap ${likedMost || canImprove ? 'bg-[#D4A12F] text-[#162447] font-black' : 'bg-white/10 text-white/80'}`}>
+              <span className={`px-2.5 py-0.5 rounded-full whitespace-nowrap ${likedMost || canImprove ? 'bg-[#D4A12F] text-[#14213D] font-black' : 'bg-white/10 text-white/80'}`}>
                 Feedback
               </span>
             </div>
 
-            {/* Dark Navy Track & Gold Progress Line */}
-            <div className="w-full h-2.5 bg-[#162447]/80 rounded-full overflow-hidden p-0.5 border border-white/10">
+            {/* Dark Navy Track & 8px Gold Progress Line */}
+            <div className="w-full h-2 bg-white/15 rounded-full overflow-hidden p-0 border border-white/10">
               <div 
-                className="h-full bg-gradient-to-r from-[#D4A12F] via-[#F3C04D] to-amber-300 rounded-full transition-all duration-300 shadow-md"
+                className="h-full bg-[#D4A12F] rounded-full transition-all duration-300 shadow-md"
                 style={{ width: `${progressStats.pct}%` }}
               ></div>
             </div>

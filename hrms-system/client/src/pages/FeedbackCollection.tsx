@@ -413,13 +413,25 @@ export default function FeedbackCollection() {
                             <span className="text-xs font-bold text-gray-700">{productFound}</span>
                           </td>
                           <td className="py-3.5 px-4">
-                            {f.isNegative ? (
+                            {f.status === 'resolved' || f.status === 'closed' ? (
+                              <span className="px-2.5 py-1 rounded-full text-xs font-extrabold bg-emerald-100 text-emerald-800 flex items-center gap-1 w-max shadow-xs">
+                                <CheckCircle2 className="w-3.5 h-3.5" /> Resolved &amp; Closed
+                              </span>
+                            ) : f.status === 'escalated_manager' ? (
+                              <span className="px-2.5 py-1 rounded-full text-xs font-extrabold bg-purple-100 text-purple-900 border border-purple-300 flex items-center gap-1 w-max shadow-xs">
+                                <ShieldAlert className="w-3.5 h-3.5 text-purple-700" /> Escalated to Manager
+                              </span>
+                            ) : f.status === 'called' || f.status === 'in_progress' ? (
+                              <span className="px-2.5 py-1 rounded-full text-xs font-extrabold bg-blue-100 text-blue-800 flex items-center gap-1 w-max shadow-xs">
+                                <Clock className="w-3.5 h-3.5" /> In Progress
+                              </span>
+                            ) : f.isNegative ? (
                               <span className="px-2.5 py-1 rounded-full text-xs font-extrabold bg-rose-100 text-rose-800 flex items-center gap-1 w-max shadow-xs">
-                                <ThumbsDown className="w-3 h-3" /> Negative / Escalated
+                                <ThumbsDown className="w-3.5 h-3.5" /> Auto-Escalated (New)
                               </span>
                             ) : (
-                              <span className="px-2.5 py-1 rounded-full text-xs font-extrabold bg-emerald-100 text-emerald-800 flex items-center gap-1 w-max shadow-xs">
-                                <ThumbsUp className="w-3 h-3" /> Satisfied
+                              <span className="px-2.5 py-1 rounded-full text-xs font-extrabold bg-emerald-50 text-emerald-700 flex items-center gap-1 w-max border border-emerald-200">
+                                <ThumbsUp className="w-3.5 h-3.5 text-emerald-600" /> Satisfied
                               </span>
                             )}
                           </td>
@@ -431,7 +443,7 @@ export default function FeedbackCollection() {
                               onClick={() => handleOpenModal(f)}
                               className="px-3 py-1.5 rounded-xl border border-[#1E2D4E] text-[#1E2D4E] font-extrabold text-[11px] hover:bg-[#1E2D4E] hover:text-white transition-all flex items-center gap-1 ml-auto shadow-xs"
                             >
-                              <Eye className="w-3.5 h-3.5" /> View Details
+                              <Eye className="w-3.5 h-3.5" /> View Ticket
                             </button>
                           </td>
                         </tr>
@@ -762,6 +774,15 @@ export default function FeedbackCollection() {
                       className="px-4 py-2.5 rounded-xl bg-amber-500 hover:bg-amber-600 text-white font-extrabold text-xs shadow-md active:scale-95 transition-all"
                     >
                       Mark In Progress
+                    </button>
+
+                    <button
+                      onClick={() => handleSaveModalResolution('escalated_manager')}
+                      disabled={savingResolution}
+                      className="px-4 py-2.5 rounded-xl bg-purple-700 hover:bg-purple-800 text-white font-extrabold text-xs shadow-md active:scale-95 transition-all flex items-center gap-1.5"
+                    >
+                      <ShieldAlert className="w-4 h-4" />
+                      <span>Escalate to Store Manager</span>
                     </button>
 
                     <button

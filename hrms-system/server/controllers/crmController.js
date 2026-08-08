@@ -624,14 +624,16 @@ exports.updateCallQueue = async (req, res) => {
       }
     }
 
-    // 5. Update Feedback table isNegative status
-    await db.query(`UPDATE Feedback SET isNegative = 1 WHERE id = ?`, [rawFeedbackId]).catch(() => {});
+    // 5. Update Feedback table isNegative and status column to keep feedback collection in sync
+    await db.query(`ALTER TABLE Feedback ADD COLUMN status VARCHAR(32)`).catch(() => {});
+    await db.query(`UPDATE Feedback SET status = ?, isNegative = 1 WHERE id = ?`, [status, rawFeedbackId]).catch(() => {});
 
     // 6. Broadcast real-time Socket.IO push
     const io = req.app.get('io');
     if (io) {
       io.emit('feedback:negative', { id: rawFeedbackId, status });
       io.emit('feedback:submitted', { id: rawFeedbackId });
+      io.emit('callqueue:updated', { id: rawFeedbackId, status, notes });
     }
 
     // 7. ALWAYS return success response to prevent HTTP 500 on client UI!
