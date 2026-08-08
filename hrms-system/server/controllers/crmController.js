@@ -226,25 +226,25 @@ exports.submitFeedback = async (req, res) => {
     const id = getUUID();
     const entryDate = getISTDateString();
     
-    let isNegative = false;
-    if (answers && typeof answers === 'object') {
-      const strVal = JSON.stringify(answers).toLowerCase();
-      const negKeywords = [
-        'dissatisfied', 'very dissatisfied', 'poor', 'very poor', 'no', 'partially',
-        'expensive', 'very expensive', 'not very helpful', 'not helpful at all',
-        'difficult', 'very difficult', 'probably not', 'definitely not', 'not recommend'
-      ];
-      if (negKeywords.some(kw => strVal.includes(kw))) {
-        isNegative = true;
-      }
-    }
-
     const compiledVoice = [
       likedMost ? `Liked Most: ${likedMost}` : '',
       canImprove ? `Can Improve: ${canImprove}` : '',
       additionalComments ? `Comments: ${additionalComments}` : '',
       voice ? `Voice: ${voice}` : ''
     ].filter(Boolean).join('\n');
+
+    let isNegative = false;
+    const fullPayloadString = (JSON.stringify(answers || {}) + ' ' + compiledVoice).toLowerCase();
+    const negKeywords = [
+      'dissatisfied', 'very dissatisfied', 'poor', 'very poor', 'no', 'partially',
+      'expensive', 'very expensive', 'not very helpful', 'not helpful at all',
+      'difficult', 'very difficult', 'probably not', 'definitely not', 'not recommend',
+      'bad', 'worst', 'issue', 'problem', 'unhappy', 'slow', 'rude', 'complain', 'complaint',
+      'disappointed', 'delay', 'defect', 'damaged', 'replace', 'refund'
+    ];
+    if (negKeywords.some(kw => fullPayloadString.includes(kw))) {
+      isNegative = true;
+    }
 
     try {
       await db.query(`
@@ -284,10 +284,28 @@ exports.submitFeedback = async (req, res) => {
 
     if (isNegative) {
       const cqId = getUUID();
-      await db.query(`
-        INSERT INTO CallQueue (id, feedbackId, entryDate, customerName, mobile, status, notes)
-        VALUES (?, ?, ?, ?, ?, 'new', ?)
-      `, [cqId, id, entryDate, customerName || 'Valued Customer', mobile || '', 'Negative customer feedback auto-escalated']);
+      try {
+        await db.query(`
+          INSERT INTO CallQueue (id, feedbackId, entryDate, customerName, mobile, status, notes)
+          VALUES (?, ?, ?, ?, ?, 'new', ?)
+        `, [cqId, id, entryDate, customerName || 'Valued Customer', mobile || '', compiledVoice ? `Escalated Feedback: ${compiledVoice}` : 'Negative customer feedback auto-escalated']);
+      } catch (cqErr) {
+        console.error('[submitFeedback CallQueue Insert Error]:', cqErr);
+        
+        await db.query(`ALTER TABLE CallQueue ADD COLUMN feedbackId VARCHAR(64)`).catch(() => {});
+        await db.query(`ALTER TABLE CallQueue ADD COLUMN entryDate VARCHAR(16)`).catch(() => {});
+        await db.query(`ALTER TABLE CallQueue ADD COLUMN customerName VARCHAR(255)`).catch(() => {});
+        await db.query(`ALTER TABLE CallQueue ADD COLUMN mobile VARCHAR(32)`).catch(() => {});
+        await db.query(`ALTER TABLE CallQueue ADD COLUMN status VARCHAR(32) DEFAULT 'new'`).catch(() => {});
+        await db.query(`ALTER TABLE CallQueue ADD COLUMN notes TEXT`).catch(() => {});
+
+        await db.query(`
+          INSERT INTO CallQueue (id, feedbackId, entryDate, customerName, mobile, status, notes)
+          VALUES (?, ?, ?, ?, ?, 'new', ?)
+        `, [cqId, id, entryDate, customerName || 'Valued Customer', mobile || '', compiledVoice ? `Escalated Feedback: ${compiledVoice}` : 'Negative customer feedback auto-escalated']).catch(retryErr => {
+          console.error('[submitFeedback CallQueue Retry Insert Error]:', retryErr);
+        });
+      }
 
       if (io) {
         io.emit('feedback:negative', {
@@ -408,12 +426,78 @@ exports.getCallQueue = async (req, res) => {
       ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
     `).catch(() => {});
 
-    const [rows] = await db.query('SELECT * FROM CallQueue ORDER BY entryDate DESC, id DESC').catch(async () => {
+    // Ensure columns exist on legacy tables
+    await db.query(`ALTER TABLE CallQueue ADD COLUMN feedbackId VARCHAR(64)`).catch(() => {});
+    await db.query(`ALTER TABLE CallQueue ADD COLUMN entryDate VARCHAR(16)`).catch(() => {});
+    await db.query(`ALTER TABLE CallQueue ADD COLUMN customerName VARCHAR(255)`).catch(() => {});
+    await db.query(`ALTER TABLE CallQueue ADD COLUMN mobile VARCHAR(32)`).catch(() => {});
+
+    // Auto-sync missing CallQueue entries for negative feedbacks to ensure 100% data completeness
+    await db.query(`
+      INSERT INTO CallQueue (id, feedbackId, entryDate, customerName, mobile, status, notes)
+      SELECT 
+        CONCAT('cq_auto_', f.id) as id,
+        f.id as feedbackId,
+        COALESCE(f.entryDate, '${getISTDateString()}') as entryDate,
+        COALESCE(f.customerName, 'Valued Customer') as customerName,
+        COALESCE(f.mobile, '') as mobile,
+        'new' as status,
+        COALESCE(NULLIF(f.voice, ''), 'Negative customer feedback auto-escalated') as notes
+      FROM Feedback f
+      LEFT JOIN CallQueue cq ON cq.feedbackId = f.id
+      WHERE f.isNegative = 1 AND cq.id IS NULL
+    `).catch(syncErr => {
+      console.warn('[getCallQueue Auto-Sync Notice]:', syncErr.message);
+    });
+
+    const { date, startDate, endDate, status, search } = req.query;
+    let sql = 'SELECT * FROM CallQueue WHERE 1=1';
+    const params = [];
+
+    if (date) {
+      sql += ' AND entryDate = ?';
+      params.push(date);
+    } else {
+      if (startDate) {
+        sql += ' AND entryDate >= ?';
+        params.push(startDate);
+      }
+      if (endDate) {
+        sql += ' AND entryDate <= ?';
+        params.push(endDate);
+      }
+    }
+
+    if (status && status !== 'all') {
+      sql += ' AND status = ?';
+      params.push(status);
+    }
+
+    if (search) {
+      sql += ' AND (customerName LIKE ? OR mobile LIKE ? OR notes LIKE ?)';
+      const s = `%${search}%`;
+      params.push(s, s, s);
+    }
+
+    sql += ' ORDER BY entryDate DESC, id DESC';
+
+    const [rows] = await db.query(sql, params).catch(async () => {
       const [fallback] = await db.query('SELECT * FROM CallQueue ORDER BY id DESC');
       return [fallback];
     });
-    return res.json({ success: true, callQueue: rows || [] });
+
+    const formatted = (rows || []).map(r => ({
+      ...r,
+      customerName: r.customerName || r.customer_name || 'Valued Customer',
+      mobile: r.mobile || r.phone || 'N/A',
+      entryDate: r.entryDate || r.entry_date || (r.createdAt ? new Date(r.createdAt).toISOString().split('T')[0] : getISTDateString()),
+      status: r.status || 'new',
+      attempts: r.attempts || 0
+    }));
+
+    return res.json({ success: true, callQueue: formatted });
   } catch (err) {
+    console.error('[getCallQueue Error]', err);
     return res.json({ success: true, callQueue: [] });
   }
 };

@@ -349,7 +349,10 @@ export const API = {
     return apiFetch(`/crm/feedbacks${q ? `?${q}` : ''}`);
   },
   async submitFeedback(payload: any) { return apiFetch('/crm/feedback', { method: 'POST', body: JSON.stringify(payload) }); },
-  async getCallQueue() { return apiFetch('/crm/call-queue'); },
+  async getCallQueue(params?: { date?: string; startDate?: string; endDate?: string; status?: string; search?: string }) {
+    const q = new URLSearchParams(params as any).toString();
+    return apiFetch(`/crm/call-queue${q ? `?${q}` : ''}`);
+  },
   async updateCallQueue(payload: any) { return apiFetch('/crm/call-queue/update', { method: 'POST', body: JSON.stringify(payload) }); },
   async getDiverts() { return apiFetch('/crm/diverts'); },
   async createDivert(payload: any) { return apiFetch('/crm/diverts/create', { method: 'POST', body: JSON.stringify(payload) }); },
