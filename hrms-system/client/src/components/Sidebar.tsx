@@ -36,7 +36,8 @@ export default function Sidebar({ session, isOpen, onClose }: SidebarProps) {
     'Interviewer': ['interview', 'candidates'],
     'Manager':     ['dashboard', 'candidates', 'interview', 'offer', 'openings', 'employees', 'dept_hiring', 'section_allocation', 'broadcast'],
     'Employee':    ['dashboard', 'onboarding'],
-    'Guest':       ['form']
+    'Guest':       ['form'],
+    'Greeter':     ['footfall', 'feedback_list', 'feedback_qr', 'divert', 'vm_checklist', 'feedback_public', 'tv', 'greeter']
   };
 
   const [allowed, setAllowed] = useState<string[]>(roleNavMap[role] || roleNavMap['HR']);
@@ -48,11 +49,7 @@ export default function Sidebar({ session, isOpen, onClose }: SidebarProps) {
       const defaultAllowed = roleNavMap[role] || roleNavMap['HR'];
       
       if (settingsObj && Object.keys(settingsObj).length > 0) {
-        const allKeys = [
-          'dashboard', 'candidates', 'interview', 'offer', 'openings', 
-          'onboarding', 'employees', 'dept_hiring', 'section_allocation', 
-          'exit', 'form', 'broadcast', 'settings'
-        ];
+        const allKeys = navItems.map(item => item.key);
         
         const newAllowed = allKeys.filter(key => {
           const dbKey = `${role}_${key}`;
@@ -77,7 +74,8 @@ export default function Sidebar({ session, isOpen, onClose }: SidebarProps) {
     'Interviewer': 'Interviewer Panel',
     'Manager':     'Store Manager',
     'Employee':    'Employee',
-    'Guest':       'Guest'
+    'Guest':       'Guest',
+    'Greeter':     'Greeter Desk'
   };
 
   const navItems = [

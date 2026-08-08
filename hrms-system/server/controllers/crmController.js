@@ -78,17 +78,34 @@ exports.verifyPin = async (req, res) => {
 // ── Sections ────────────────────────────────────────────────
 exports.getSections = async (req, res) => {
   try {
-    const [rows] = await db.query('SELECT * FROM Sections WHERE isActive = TRUE ORDER BY name ASC');
-    if (rows.length === 0) {
-      const defaults = [
-        { id: 'sec_1', name: 'Sarees & Ethnic', sectionType: 'retail', manager: 'Store Manager' },
-        { id: 'sec_2', name: 'Suiting & Shirting', sectionType: 'retail', manager: 'Floor Manager' },
-        { id: 'sec_3', name: 'Kids & Women Wear', sectionType: 'retail', manager: 'Assistant Manager' },
-        { id: 'sec_4', name: 'Cash Counters', sectionType: 'billing', manager: 'Chief Cashier' }
-      ];
-      return res.json({ success: true, sections: defaults });
+    const defaultSections = [
+      { id: 'sec_1', name: 'Ground Floor Saree', sectionType: 'retail', manager: 'Ground Floor Saree Incharge' },
+      { id: 'sec_2', name: '1st Floor Saree', sectionType: 'retail', manager: '1st Floor Saree Manager' },
+      { id: 'sec_3', name: 'Ladies', sectionType: 'retail', manager: 'Ladies Wear Lead' },
+      { id: 'sec_4', name: 'Kids', sectionType: 'retail', manager: 'Kids Section Incharge' },
+      { id: 'sec_5', name: 'Mens', sectionType: 'retail', manager: 'Menswear Manager' }
+    ];
+
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS Sections (
+        id VARCHAR(64) PRIMARY KEY,
+        name VARCHAR(150) NOT NULL UNIQUE,
+        sectionType VARCHAR(50) DEFAULT 'retail',
+        manager VARCHAR(150) NULL,
+        isActive TINYINT(1) DEFAULT 1
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    `).catch(() => {});
+
+    for (const sec of defaultSections) {
+      await db.query(`
+        INSERT INTO Sections (id, name, sectionType, manager, isActive)
+        VALUES (?, ?, ?, ?, TRUE)
+        ON DUPLICATE KEY UPDATE name = VALUES(name), isActive = TRUE
+      `, [sec.id, sec.name, sec.sectionType, sec.manager]).catch(() => {});
     }
-    return res.json({ success: true, sections: rows });
+
+    const [rows] = await db.query('SELECT * FROM Sections WHERE isActive = TRUE ORDER BY id ASC');
+    return res.json({ success: true, sections: rows.length > 0 ? rows : defaultSections });
   } catch (err) {
     return res.status(500).json({ success: false, error: err.message });
   }
@@ -130,16 +147,40 @@ exports.upsertFootfall = async (req, res) => {
 // ── Feedback & Questions ────────────────────────────────────
 exports.getFeedbackQuestions = async (req, res) => {
   try {
-    const [rows] = await db.query('SELECT * FROM FeedbackQuestions WHERE isActive = TRUE ORDER BY position ASC');
-    if (rows.length === 0) {
-      const defaults = [
-        { id: 'q1', question: 'Were you satisfied with our collection today?', options: ['Yes', 'Maybe', 'No'], position: 1 },
-        { id: 'q2', question: 'How would you rate the store ambiance & cleanliness?', options: ['Excellent', 'Good', 'Average', 'Poor'], position: 2 },
-        { id: 'q3', question: 'Did our staff assist you adequately?', options: ['Extremely Helpful', 'Satisfactory', 'Needs Improvement'], position: 3 }
-      ];
-      return res.json({ success: true, questions: defaults });
+    const defaultQuestions = [
+      { id: 'q1', question: 'How satisfied are you with your overall shopping experience today?', options: ['Very satisfied', 'Satisfied', 'Neutral', 'Dissatisfied', 'Very dissatisfied'], position: 1 },
+      { id: 'q2', question: 'How would you rate the variety of our collection?', options: ['Excellent', 'Good', 'Average', 'Poor', 'Very poor'], position: 2 },
+      { id: 'q3', question: 'Did you find the product you were looking for?', options: ['Yes, exactly what I wanted', 'Yes, with some assistance', 'Partially', 'No'], position: 3 },
+      { id: 'q4', question: 'How would you rate the quality of our products?', options: ['Excellent', 'Good', 'Average', 'Poor', 'Very poor'], position: 4 },
+      { id: 'q5', question: 'How reasonable were our prices?', options: ['Very reasonable', 'Reasonable', 'Neutral', 'Expensive', 'Very expensive'], position: 5 },
+      { id: 'q6', question: 'How would you rate the behavior and courtesy of our staff?', options: ['Excellent', 'Good', 'Average', 'Poor', 'Very poor'], position: 6 },
+      { id: 'q7', question: 'How helpful was our staff in assisting you?', options: ['Extremely helpful', 'Helpful', 'Average', 'Not very helpful', 'Not helpful at all'], position: 7 },
+      { id: 'q8', question: 'How would you rate the store ambiance and cleanliness?', options: ['Excellent', 'Good', 'Average', 'Poor', 'Very poor'], position: 8 },
+      { id: 'q9', question: 'How easy was it to find products in the store?', options: ['Very easy', 'Easy', 'Average', 'Difficult', 'Very difficult'], position: 9 },
+      { id: 'q10', question: 'How likely are you to visit BSC Exclusive again?', options: ['Definitely', 'Probably', 'Not sure', 'Probably not', 'Definitely not'], position: 10 },
+      { id: 'q11', question: 'How likely are you to recommend BSC Exclusive to your friends and family?', options: ['Definitely recommend', 'Probably recommend', 'Neutral', 'Probably not recommend', 'Definitely not recommend'], position: 11 }
+    ];
+
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS FeedbackQuestions (
+        id VARCHAR(64) PRIMARY KEY,
+        question TEXT NOT NULL,
+        options TEXT NOT NULL,
+        position INT DEFAULT 1,
+        isActive TINYINT(1) DEFAULT 1
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    `).catch(() => {});
+
+    for (const q of defaultQuestions) {
+      await db.query(`
+        INSERT INTO FeedbackQuestions (id, question, options, position, isActive)
+        VALUES (?, ?, ?, ?, TRUE)
+        ON DUPLICATE KEY UPDATE question = VALUES(question), options = VALUES(options), position = VALUES(position), isActive = TRUE
+      `, [q.id, q.question, JSON.stringify(q.options), q.position]).catch(() => {});
     }
-    return res.json({ success: true, questions: rows });
+
+    const [rows] = await db.query('SELECT * FROM FeedbackQuestions WHERE isActive = TRUE ORDER BY position ASC');
+    return res.json({ success: true, questions: rows.length > 0 ? rows : defaultQuestions });
   } catch (err) {
     return res.status(500).json({ success: false, error: err.message });
   }
@@ -147,22 +188,34 @@ exports.getFeedbackQuestions = async (req, res) => {
 
 exports.submitFeedback = async (req, res) => {
   try {
-    const { customerName, mobile, dob, sectionId, answers, voice, source } = req.body;
+    const { customerName, mobile, dob, sectionId, answers, likedMost, canImprove, additionalComments, voice, source } = req.body;
     const id = getUUID();
     const entryDate = new Date().toISOString().split('T')[0];
     
     let isNegative = false;
     if (answers && typeof answers === 'object') {
       const strVal = JSON.stringify(answers).toLowerCase();
-      if (strVal.includes('no') || strVal.includes('poor') || strVal.includes('needs improvement')) {
+      const negKeywords = [
+        'dissatisfied', 'very dissatisfied', 'poor', 'very poor', 'no', 'partially',
+        'expensive', 'very expensive', 'not very helpful', 'not helpful at all',
+        'difficult', 'very difficult', 'probably not', 'definitely not'
+      ];
+      if (negKeywords.some(kw => strVal.includes(kw))) {
         isNegative = true;
       }
     }
 
+    const compiledVoice = [
+      likedMost ? `Liked Most: ${likedMost}` : '',
+      canImprove ? `Can Improve: ${canImprove}` : '',
+      additionalComments ? `Comments: ${additionalComments}` : '',
+      voice ? `Voice: ${voice}` : ''
+    ].filter(Boolean).join('\n');
+
     await db.query(`
       INSERT INTO Feedback (id, entryDate, customerName, mobile, dob, sectionId, answers, voice, source, isNegative)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-    `, [id, entryDate, customerName || 'Anonymous', mobile || '', dob || null, sectionId || null, JSON.stringify(answers || {}), voice || '', source || 'qr', isNegative]);
+    `, [id, entryDate, customerName || 'Anonymous', mobile || '', dob || null, sectionId || null, JSON.stringify(answers || {}), compiledVoice, source || 'qr', isNegative ? 1 : 0]);
 
     if (isNegative) {
       const cqId = getUUID();

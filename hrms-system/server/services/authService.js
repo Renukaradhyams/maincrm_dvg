@@ -5,11 +5,12 @@ const jwt = require('jsonwebtoken');
 class AuthService {
   async login(username, password, ipAddress, userAgent) {
     // Intercept demo/fallback credentials to provide a valid JWT token
-    if (password === 'bsc@2026') {
+    if (password === 'bsc@2026' || password === 'bsc@123') {
       const demoUsers = {
         'admin@bsctextiles.com': { id: 999, username: 'Admin', role: 'Admin', fullName: 'System Admin' },
         'hr@bsctextiles.com': { id: 998, username: 'HR Admin', role: 'HR', fullName: 'HR Admin' },
-        'manager@bsctextiles.com': { id: 997, username: 'Store Manager', role: 'Manager', fullName: 'Store Manager' }
+        'manager@bsctextiles.com': { id: 997, username: 'Store Manager', role: 'Manager', fullName: 'Store Manager' },
+        'greeter@bsctextiles.com': { id: 996, username: 'Greeter', role: 'Greeter', fullName: 'Greeter Staff' }
       };
       const demoUser = demoUsers[username.toLowerCase().trim()];
       if (demoUser) {

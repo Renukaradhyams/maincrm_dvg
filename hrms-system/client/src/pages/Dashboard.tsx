@@ -114,6 +114,10 @@ export default function DashboardPage() {
       return;
     }
     const sess = Auth.get();
+    if (sess?.role === 'Greeter') {
+      navigate('/footfall', { replace: true });
+      return;
+    }
     setSession(sess);
     loadData();
 

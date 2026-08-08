@@ -6,12 +6,14 @@ async function seed() {
 
   try {
     const defaultPassword = await bcrypt.hash('bsc@2026', 10);
+    const greeterPassword = await bcrypt.hash('bsc@123', 10);
 
     // 1. Seed Users
     const users = [
       ['hr@bsctextiles.com', defaultPassword, 'HR', 'HR Admin', true],
       ['manager@bsctextiles.com', defaultPassword, 'Manager', 'Store Manager', true],
-      ['admin@bsctextiles.com', defaultPassword, 'Admin', 'Admin', true]
+      ['admin@bsctextiles.com', defaultPassword, 'Admin', 'Admin', true],
+      ['greeter@bsctextiles.com', greeterPassword, 'Greeter', 'Greeter Staff', true]
     ];
 
     for (const u of users) {
@@ -22,7 +24,7 @@ async function seed() {
         u
       );
     }
-    console.log('✓ Users seeded (hr@bsctextiles.com, manager@bsctextiles.com, admin@bsctextiles.com)');
+    console.log('✓ Users seeded (hr@bsctextiles.com, manager@bsctextiles.com, admin@bsctextiles.com, greeter@bsctextiles.com)');
 
     // 2. Seed Designations
     const designations = [

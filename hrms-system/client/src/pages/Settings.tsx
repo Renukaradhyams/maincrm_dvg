@@ -258,6 +258,44 @@ export default function SettingsPage() {
           {/* TAB 1: USERS */}
           {activeTab === 'users' && (
             <div className="space-y-6 animate-fade-in">
+              {/* System Credentials Quick Reference Card */}
+              <div className="card-glass p-5 border-2 border-[#C9952A]/30 space-y-3 bg-gradient-to-r from-amber-50/40 to-amber-100/20">
+                <div className="flex items-center justify-between border-b border-[#C9952A]/30 pb-2">
+                  <h3 className="font-extrabold text-[#1E2D4E] text-xs uppercase tracking-wider flex items-center gap-2">
+                    <Shield className="w-4 h-4 text-[#C9952A]" />
+                    <span>System Authorized Login Credentials Reference</span>
+                  </h3>
+                  <span className="text-[10px] font-black text-[#C9952A] bg-amber-200/60 px-2 py-0.5 rounded-full uppercase">
+                    Davangere Hub Active
+                  </span>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs font-semibold">
+                  <div className="p-3 bg-white rounded-xl border border-[#e2dfd7]">
+                    <div className="text-[10px] font-black text-[#777777] uppercase">System Admin</div>
+                    <div className="font-extrabold text-[#1E2D4E] font-mono mt-0.5">admin@bsctextiles.com</div>
+                    <div className="text-[11px] text-[#C9952A] font-mono font-bold">Password: bsc@2026</div>
+                  </div>
+                  <div className="p-3 bg-white rounded-xl border border-[#e2dfd7]">
+                    <div className="text-[10px] font-black text-[#777777] uppercase">HR Specialist</div>
+                    <div className="font-extrabold text-[#1E2D4E] font-mono mt-0.5">hr@bsctextiles.com</div>
+                    <div className="text-[11px] text-[#C9952A] font-mono font-bold">Password: bsc@2026</div>
+                  </div>
+                  <div className="p-3 bg-white rounded-xl border border-[#e2dfd7]">
+                    <div className="text-[10px] font-black text-[#777777] uppercase">Store Manager</div>
+                    <div className="font-extrabold text-[#1E2D4E] font-mono mt-0.5">manager@bsctextiles.com</div>
+                    <div className="text-[11px] text-[#C9952A] font-mono font-bold">Password: bsc@2026</div>
+                  </div>
+                  <div className="p-3 bg-white rounded-xl border-2 border-emerald-500/40 bg-emerald-50/50">
+                    <div className="text-[10px] font-black text-emerald-800 uppercase flex items-center justify-between">
+                      <span>Greeter Desk</span>
+                      <span className="px-1.5 py-0.2 rounded bg-emerald-600 text-white font-mono text-[9px]">NEW</span>
+                    </div>
+                    <div className="font-extrabold text-[#1E2D4E] font-mono mt-0.5">greeter@bsctextiles.com</div>
+                    <div className="text-[11px] text-emerald-700 font-mono font-bold">Password: bsc@123</div>
+                  </div>
+                </div>
+              </div>
+
               <div className="card-glass p-6 space-y-4">
                 <h3 className="font-extrabold text-[#1E2D4E] text-sm uppercase tracking-wider flex items-center gap-2">
                   <Users className="w-4 h-4 text-[#C9952A]" />
@@ -294,6 +332,7 @@ export default function SettingsPage() {
                     <option value="HR">HR Specialist</option>
                     <option value="Manager">Store Manager</option>
                     <option value="Admin">Administrator</option>
+                    <option value="Greeter">Greeter Desk</option>
                     <option value="Recruiter">Recruiter</option>
                   </select>
                 </div>
@@ -332,6 +371,7 @@ export default function SettingsPage() {
                               <option value="Admin">Admin</option>
                               <option value="HR">HR</option>
                               <option value="Manager">Store Manager</option>
+                              <option value="Greeter">Greeter Desk</option>
                               <option value="Recruiter">Recruiter</option>
                               <option value="Interviewer">Interviewer</option>
                             </select>
@@ -493,7 +533,7 @@ export default function SettingsPage() {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 text-xs">
-                {['HR', 'Manager', 'Recruiter', 'Interviewer'].map(roleName => (
+                {['HR', 'Manager', 'Greeter', 'Recruiter', 'Interviewer'].map(roleName => (
                   <div key={roleName} className="p-4 rounded-2xl border border-[#e2dfd7] bg-[#F9F7F4] space-y-3">
                     <div className="font-black text-sm text-[#1E2D4E] border-b border-[#e2dfd7] pb-2 uppercase tracking-wider">{roleName} Access</div>
                     <div className="space-y-2">

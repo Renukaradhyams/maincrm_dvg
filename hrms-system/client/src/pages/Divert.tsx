@@ -329,6 +329,20 @@ export default function Divert() {
               <option value="rejected">Rejected / Unavailable</option>
             </select>
 
+            {/* Store Section Filter */}
+            <select
+              value={sectionFilter}
+              onChange={(e) => setSectionFilter(e.target.value)}
+              className="select-modern text-xs font-bold"
+            >
+              <option value="">All Store Sections</option>
+              <option value="Ground Floor Saree">Ground Floor Saree</option>
+              <option value="1st Floor Saree">1st Floor Saree</option>
+              <option value="Ladies">Ladies</option>
+              <option value="Kids">Kids</option>
+              <option value="Mens">Mens</option>
+            </select>
+
             {/* Reason Code Filter */}
             <select
               value={reasonFilter}
@@ -485,8 +499,13 @@ export default function Divert() {
                         className="select-modern font-bold"
                       >
                         <option value="">Select Floor Section</option>
-                        {sections.map(s => (
-                          <option key={s.id} value={s.id}>{s.name}</option>
+                        <option value="Ground Floor Saree">Ground Floor Saree</option>
+                        <option value="1st Floor Saree">1st Floor Saree</option>
+                        <option value="Ladies">Ladies</option>
+                        <option value="Kids">Kids</option>
+                        <option value="Mens">Mens</option>
+                        {sections.filter(s => !['Ground Floor Saree', '1st Floor Saree', 'Ladies', 'Kids', 'Mens'].includes(s.name)).map(s => (
+                          <option key={s.id} value={s.name || s.id}>{s.name}</option>
                         ))}
                       </select>
                     </div>

@@ -458,10 +458,11 @@ async function autoInitializeDatabase(pool) {
     }
     // ------------------
 
-    // Seed default admin users including admin@bsctextiles.com / password123
+    // Seed default admin users including admin@bsctextiles.com / password123 & greeter@bsctextiles.com / bsc@123
     try {
       const hashedPass123 = await bcrypt.hash('password123', 10);
       const hashedPassAdmin = await bcrypt.hash('admin123', 10);
+      const hashedPassGreeter = await bcrypt.hash('bsc@123', 10);
 
       // Seed in `users` table
       await connection.query(
@@ -469,9 +470,11 @@ async function autoInitializeDatabase(pool) {
          ('admin@bsctextiles.com', 'admin@bsctextiles.com', ?, 'System Administrator', 'Admin', TRUE),
          ('admin', 'admin@bsctextiles.com', ?, 'System Administrator', 'Admin', TRUE),
          ('hr', 'hr@bsctextiles.com', ?, 'HR Manager', 'HR', TRUE),
-         ('manager', 'manager@bsctextiles.com', ?, 'Store Manager', 'Manager', TRUE)
+         ('manager', 'manager@bsctextiles.com', ?, 'Store Manager', 'Manager', TRUE),
+         ('greeter@bsctextiles.com', 'greeter@bsctextiles.com', ?, 'Greeter Staff', 'Greeter', TRUE),
+         ('greeter', 'greeter@bsctextiles.com', ?, 'Greeter Staff', 'Greeter', TRUE)
          ON DUPLICATE KEY UPDATE password = VALUES(password)`,
-        [hashedPass123, hashedPassAdmin, hashedPassAdmin, hashedPassAdmin]
+        [hashedPass123, hashedPassAdmin, hashedPassAdmin, hashedPassAdmin, hashedPassGreeter, hashedPassGreeter]
       );
 
       // Seed in `User` table (if User table exists)
@@ -626,7 +629,67 @@ async function autoInitializeDatabase(pool) {
         logDebug(`[Auto DB Initializer] Seeded initial BSC Textiles department sections`);
       }
 
-      logDebug(`[Auto DB Initializer] Verified department_hiring_targets, section_allocations and department_sections tables`);
+      // Seed Sections table for Sourcing Diverts & CRM
+      await connection.query(`
+        CREATE TABLE IF NOT EXISTS Sections (
+          id VARCHAR(64) PRIMARY KEY,
+          name VARCHAR(150) NOT NULL UNIQUE,
+          sectionType VARCHAR(50) DEFAULT 'retail',
+          manager VARCHAR(150) NULL,
+          isActive TINYINT(1) DEFAULT 1
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+      `);
+
+      const crmSections = [
+        ['sec_1', 'Ground Floor Saree', 'retail', 'Ground Floor Saree Incharge'],
+        ['sec_2', '1st Floor Saree', 'retail', '1st Floor Saree Manager'],
+        ['sec_3', 'Ladies', 'retail', 'Ladies Wear Lead'],
+        ['sec_4', 'Kids', 'retail', 'Kids Section Incharge'],
+        ['sec_5', 'Mens', 'retail', 'Menswear Manager']
+      ];
+
+      for (const [id, name, st, mgr] of crmSections) {
+        await connection.query(`
+          INSERT INTO Sections (id, name, sectionType, manager, isActive)
+          VALUES (?, ?, ?, ?, TRUE)
+          ON DUPLICATE KEY UPDATE name = VALUES(name), isActive = TRUE
+        `, [id, name, st, mgr]);
+      }
+
+      // Seed FeedbackQuestions table for Customer Experience Survey
+      await connection.query(`
+        CREATE TABLE IF NOT EXISTS FeedbackQuestions (
+          id VARCHAR(64) PRIMARY KEY,
+          question TEXT NOT NULL,
+          options TEXT NOT NULL,
+          position INT DEFAULT 1,
+          isActive TINYINT(1) DEFAULT 1
+        ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+      `);
+
+      const defaultQuestions = [
+        ['q1', 'How satisfied are you with your overall shopping experience today?', JSON.stringify(['Very satisfied', 'Satisfied', 'Neutral', 'Dissatisfied', 'Very dissatisfied']), 1],
+        ['q2', 'How would you rate the variety of our collection?', JSON.stringify(['Excellent', 'Good', 'Average', 'Poor', 'Very poor']), 2],
+        ['q3', 'Did you find the product you were looking for?', JSON.stringify(['Yes, exactly what I wanted', 'Yes, with some assistance', 'Partially', 'No']), 3],
+        ['q4', 'How would you rate the quality of our products?', JSON.stringify(['Excellent', 'Good', 'Average', 'Poor', 'Very poor']), 4],
+        ['q5', 'How reasonable were our prices?', JSON.stringify(['Very reasonable', 'Reasonable', 'Neutral', 'Expensive', 'Very expensive']), 5],
+        ['q6', 'How would you rate the behavior and courtesy of our staff?', JSON.stringify(['Excellent', 'Good', 'Average', 'Poor', 'Very poor']), 6],
+        ['q7', 'How helpful was our staff in assisting you?', JSON.stringify(['Extremely helpful', 'Helpful', 'Average', 'Not very helpful', 'Not helpful at all']), 7],
+        ['q8', 'How would you rate the store ambiance and cleanliness?', JSON.stringify(['Excellent', 'Good', 'Average', 'Poor', 'Very poor']), 8],
+        ['q9', 'How easy was it to find products in the store?', JSON.stringify(['Very easy', 'Easy', 'Average', 'Difficult', 'Very difficult']), 9],
+        ['q10', 'How likely are you to visit BSC Exclusive again?', JSON.stringify(['Definitely', 'Probably', 'Not sure', 'Probably not', 'Definitely not']), 10],
+        ['q11', 'How likely are you to recommend BSC Exclusive to your friends and family?', JSON.stringify(['Definitely recommend', 'Probably recommend', 'Neutral', 'Probably not recommend', 'Definitely not recommend']), 11]
+      ];
+
+      for (const [id, q, opts, pos] of defaultQuestions) {
+        await connection.query(`
+          INSERT INTO FeedbackQuestions (id, question, options, position, isActive)
+          VALUES (?, ?, ?, ?, TRUE)
+          ON DUPLICATE KEY UPDATE question = VALUES(question), options = VALUES(options), position = VALUES(position), isActive = TRUE
+        `, [id, q, opts, pos]);
+      }
+
+      logDebug(`[Auto DB Initializer] Verified Sections & FeedbackQuestions tables`);
     } catch (e) {
       logDebug(`[Auto DB Initializer Warning for new modules]:`, e.message);
     }
