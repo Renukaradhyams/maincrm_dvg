@@ -370,14 +370,24 @@ exports.getFeedbackStats = async (req, res) => {
     } catch (e) {}
 
     try {
-      const [queueRows] = await db.query('SELECT COUNT(*) as pendingCount FROM CallQueue WHERE status = "new"');
+      const [queueRows] = await db.query(`
+        SELECT COUNT(*) as pendingCount 
+        FROM Feedback f
+        LEFT JOIN CallQueue cq ON (cq.feedbackId = f.id OR cq.id = f.id)
+        WHERE f.isNegative = 1 AND (cq.status IS NULL OR cq.status = 'new')
+      `);
       if (queueRows && queueRows[0]) {
         pendingCallQueue = Number(queueRows[0].pendingCount) || 0;
       }
     } catch (e) {}
 
     try {
-      const [allQueueRows] = await db.query('SELECT COUNT(*) as totalQueueCount FROM CallQueue');
+      const [allQueueRows] = await db.query(`
+        SELECT COUNT(*) as totalQueueCount 
+        FROM Feedback f
+        LEFT JOIN CallQueue cq ON (cq.feedbackId = f.id OR cq.id = f.id)
+        WHERE f.isNegative = 1 OR cq.id IS NOT NULL
+      `);
       if (allQueueRows && allQueueRows[0]) {
         totalCallQueue = Number(allQueueRows[0].totalQueueCount) || 0;
       }
@@ -444,42 +454,57 @@ exports.getCallQueue = async (req, res) => {
         'new' as status,
         COALESCE(NULLIF(f.voice, ''), 'Negative customer feedback auto-escalated') as notes
       FROM Feedback f
-      LEFT JOIN CallQueue cq ON cq.feedbackId = f.id
+      LEFT JOIN CallQueue cq ON (cq.feedbackId = f.id OR cq.id = f.id)
       WHERE f.isNegative = 1 AND cq.id IS NULL
     `).catch(syncErr => {
       console.warn('[getCallQueue Auto-Sync Notice]:', syncErr.message);
     });
 
     const { date, startDate, endDate, status, search } = req.query;
-    let sql = 'SELECT * FROM CallQueue WHERE 1=1';
+    let sql = `
+      SELECT 
+        COALESCE(cq.id, CONCAT('cq_', f.id)) as id,
+        f.id as feedbackId,
+        COALESCE(cq.entryDate, f.entryDate, '${getISTDateString()}') as entryDate,
+        COALESCE(cq.customerName, f.customerName, 'Valued Customer') as customerName,
+        COALESCE(cq.mobile, f.mobile, '') as mobile,
+        COALESCE(cq.status, 'new') as status,
+        COALESCE(NULLIF(cq.notes, ''), NULLIF(f.voice, ''), 'Negative customer feedback auto-escalated') as notes,
+        COALESCE(cq.attempts, 0) as attempts,
+        cq.followUpDate,
+        COALESCE(cq.createdAt, f.createdAt) as createdAt
+      FROM Feedback f
+      LEFT JOIN CallQueue cq ON (cq.feedbackId = f.id OR cq.id = f.id)
+      WHERE (f.isNegative = 1 OR cq.id IS NOT NULL)
+    `;
     const params = [];
 
     if (date) {
-      sql += ' AND entryDate = ?';
+      sql += ' AND (COALESCE(cq.entryDate, f.entryDate) = ?)';
       params.push(date);
     } else {
       if (startDate) {
-        sql += ' AND entryDate >= ?';
+        sql += ' AND (COALESCE(cq.entryDate, f.entryDate) >= ?)';
         params.push(startDate);
       }
       if (endDate) {
-        sql += ' AND entryDate <= ?';
+        sql += ' AND (COALESCE(cq.entryDate, f.entryDate) <= ?)';
         params.push(endDate);
       }
     }
 
     if (status && status !== 'all') {
-      sql += ' AND status = ?';
+      sql += ' AND (COALESCE(cq.status, "new") = ?)';
       params.push(status);
     }
 
     if (search) {
-      sql += ' AND (customerName LIKE ? OR mobile LIKE ? OR notes LIKE ?)';
+      sql += ' AND (f.customerName LIKE ? OR f.mobile LIKE ? OR f.voice LIKE ? OR cq.notes LIKE ?)';
       const s = `%${search}%`;
-      params.push(s, s, s);
+      params.push(s, s, s, s);
     }
 
-    sql += ' ORDER BY entryDate DESC, id DESC';
+    sql += ' ORDER BY COALESCE(cq.entryDate, f.entryDate) DESC, f.id DESC';
 
     const [rows] = await db.query(sql, params).catch(async () => {
       const [fallback] = await db.query('SELECT * FROM CallQueue ORDER BY id DESC');
@@ -505,9 +530,21 @@ exports.getCallQueue = async (req, res) => {
 exports.updateCallQueue = async (req, res) => {
   try {
     const { id, status, notes, followUpDate } = req.body;
-    await db.query(`
-      UPDATE CallQueue SET status = ?, notes = ?, followUpDate = ?, attempts = attempts + 1, updatedAt = CURRENT_TIMESTAMP WHERE id = ?
-    `, [status || 'called', notes || '', followUpDate || null, id]);
+    const rawFeedbackId = id.startsWith('cq_auto_') ? id.replace('cq_auto_', '') : (id.startsWith('cq_') ? id.replace('cq_', '') : id);
+
+    const [existing] = await db.query('SELECT id FROM CallQueue WHERE id = ? OR feedbackId = ?', [id, rawFeedbackId]).catch(() => [[]]);
+
+    if (existing && existing.length > 0) {
+      await db.query(`
+        UPDATE CallQueue SET status = ?, notes = ?, followUpDate = ?, attempts = attempts + 1, updatedAt = CURRENT_TIMESTAMP WHERE id = ? OR feedbackId = ?
+      `, [status || 'called', notes || '', followUpDate || null, existing[0].id, rawFeedbackId]);
+    } else {
+      await db.query(`
+        INSERT INTO CallQueue (id, feedbackId, entryDate, customerName, mobile, status, notes, attempts)
+        VALUES (?, ?, ?, 'Valued Customer', '', ?, ?, 1)
+      `, [id, rawFeedbackId, getISTDateString(), status || 'called', notes || '']);
+    }
+
     return res.json({ success: true, message: 'Call queue entry updated' });
   } catch (err) {
     return res.status(500).json({ success: false, error: err.message });
