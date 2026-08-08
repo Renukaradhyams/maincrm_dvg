@@ -267,20 +267,122 @@ exports.submitFeedback = async (req, res) => {
       additionalComments ? `Comments: ${additionalComments}` : '',
       voice ? `Voice: ${voice}` : '',
       yourVoice ? `Voice: ${yourVoice}` : ''
+function evaluateFeedbackEscalation(answersObj = {}, voiceCommentsStr = '', rawQ0 = '', rawQ1 = '', rawQ2 = '', rawQ3 = '') {
+  const q1Val = String(answersObj.q1 || rawQ1 || '').trim().toLowerCase();
+  const q2Val = String(answersObj.q2 || rawQ2 || '').trim().toLowerCase();
+  const q3Val = String(answersObj.q3 || rawQ3 || '').trim().toLowerCase();
+  const q4Val = String(answersObj.q4 || '').trim().toLowerCase();
+  const q5Val = String(answersObj.q5 || '').trim().toLowerCase();
+
+  // Strict Question-level negative criteria:
+  // Q1 = Dissatisfied or Very dissatisfied
+  // Q2 = No
+  // Q3 = Poor
+  // Q4 = Poor
+  // Q5 = Not recommend
+  const isQ1Neg = q1Val.includes('dissatisfied');
+  const isQ2Neg = q2Val === 'no';
+  const isQ3Neg = q3Val === 'poor' || q3Val === 'very poor';
+  const isQ4Neg = q4Val === 'poor' || q4Val === 'very poor';
+  const isQ5Neg = q5Val.includes('not recommend');
+
+  const isQuestionNegative = isQ1Neg || isQ2Neg || isQ3Neg || isQ4Neg || isQ5Neg;
+
+  // Explicit complaint keywords in comments
+  const commentsLower = String(voiceCommentsStr).toLowerCase();
+  const explicitComplaintKeywords = [
+    'terrible', 'horrible', 'worst', 'rude', 'scam', 'fraud', 'cheat', 'complaint', 'complain', 
+    'refund', 'defect', 'damaged', 'broken', 'disappointed', 'unhappy', 'replace', 'bad service',
+    'overcharged', 'wrong bill', 'poor quality'
+  ];
+  const hasExplicitCommentComplaint = explicitComplaintKeywords.some(kw => commentsLower.includes(kw));
+
+  return isQuestionNegative || hasExplicitCommentComplaint;
+}
+
+exports.submitFeedback = async (req, res) => {
+  try {
+    // Ensure tables exist before inserting
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS Feedback (
+        id VARCHAR(64) PRIMARY KEY,
+        date VARCHAR(32),
+        source VARCHAR(32) DEFAULT 'qr',
+        area VARCHAR(150),
+        yourVoice TEXT,
+        custName VARCHAR(255),
+        custMobile VARCHAR(32),
+        custDob VARCHAR(32),
+        q0 VARCHAR(255), q0_other VARCHAR(255),
+        q1 VARCHAR(255), q1_other VARCHAR(255),
+        q2 VARCHAR(255), q2_other VARCHAR(255),
+        q3 VARCHAR(255), q3_other VARCHAR(255),
+        q4 VARCHAR(255), q4_other VARCHAR(255),
+        q5 VARCHAR(255), q5_other VARCHAR(255),
+        q6 VARCHAR(255), q6_other VARCHAR(255),
+        q7 VARCHAR(255), q7_other VARCHAR(255),
+        status VARCHAR(32) DEFAULT 'new',
+        actionTaken TEXT,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+        deleted_at TIMESTAMP NULL,
+        entryDate VARCHAR(32),
+        customerName VARCHAR(255),
+        mobile VARCHAR(32),
+        dob VARCHAR(32),
+        sectionId VARCHAR(64),
+        answers TEXT,
+        voice TEXT,
+        isNegative TINYINT(1) DEFAULT 0,
+        createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    `).catch(() => {});
+
+    await db.query(`
+      CREATE TABLE IF NOT EXISTS CallQueue (
+        id VARCHAR(64) PRIMARY KEY,
+        feedbackId VARCHAR(64),
+        entryDate VARCHAR(16),
+        customerName VARCHAR(255),
+        mobile VARCHAR(32),
+        status VARCHAR(32) DEFAULT 'new',
+        notes TEXT,
+        attempts INT DEFAULT 0,
+        followUpDate VARCHAR(32),
+        createdAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updatedAt TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+      ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+    `).catch(() => {});
+
+    const { 
+      customerName, custName,
+      mobile, custMobile,
+      dob, custDob,
+      sectionId, area,
+      answers, q0, q1, q2, q3, q4, q5, q6, q7,
+      likedMost, canImprove, additionalComments, voice, yourVoice,
+      source 
+    } = req.body;
+
+    const id = getUUID();
+    const entryDate = getISTDateString();
+    const dateFormatted = new Date().toLocaleDateString('en-GB');
+
+    const finalCustName = customerName || custName || 'Anonymous';
+    const finalMobile = mobile || custMobile || '';
+    const finalDob = dob || custDob || null;
+    const finalArea = area || sectionId || 'Ground Floor';
+    const finalSource = source || 'qr';
+
+    const compiledVoice = [
+      likedMost ? `Liked Most: ${likedMost}` : '',
+      canImprove ? `Can Improve: ${canImprove}` : '',
+      additionalComments ? `Comments: ${additionalComments}` : '',
+      voice ? `Voice: ${voice}` : '',
+      yourVoice ? `Voice: ${yourVoice}` : ''
     ].filter(Boolean).join('\n');
 
-    let isNegative = false;
-    const fullPayloadString = (JSON.stringify(answers || {}) + ' ' + compiledVoice + ' ' + (q0 || '') + ' ' + (q1 || '')).toLowerCase();
-    const negKeywords = [
-      'dissatisfied', 'very dissatisfied', 'poor', 'very poor', 'no', 'partially',
-      'expensive', 'very expensive', 'not very helpful', 'not helpful at all',
-      'difficult', 'very difficult', 'probably not', 'definitely not', 'not recommend',
-      'bad', 'worst', 'issue', 'problem', 'unhappy', 'slow', 'rude', 'complain', 'complaint',
-      'disappointed', 'delay', 'defect', 'damaged', 'replace', 'refund'
-    ];
-    if (negKeywords.some(kw => fullPayloadString.includes(kw))) {
-      isNegative = true;
-    }
+    const isNegative = evaluateFeedbackEscalation(answers || {}, compiledVoice, q0, q1, q2, q3);
 
     try {
       await db.query(`
@@ -954,6 +1056,7 @@ exports.getFeedbacks = async (req, res) => {
       }
 
       const voiceText = [r.voice, r.yourVoice].filter(Boolean).join('\n').trim();
+      const isNegEvaluated = evaluateFeedbackEscalation(parsedAnswers, voiceText, r.q0, r.q1, r.q2, r.q3);
 
       return {
         ...r,
@@ -966,7 +1069,7 @@ exports.getFeedbacks = async (req, res) => {
         voice: voiceText,
         yourVoice: voiceText,
         answers: parsedAnswers,
-        isNegative: !!(r.isNegative || r.is_negative)
+        isNegative: isNegEvaluated
       };
     });
 

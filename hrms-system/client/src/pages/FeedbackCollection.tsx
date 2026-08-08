@@ -519,7 +519,7 @@ export default function FeedbackCollection() {
                   </div>
                 </div>
 
-                {/* 2. Escalation Alert Card (for negative feedback) */}
+                {/* 2. Escalation Alert Card (ONLY shown for actual negative feedback) */}
                 {selectedFeedback.isNegative && (
                   <div className="card-glass p-4 rounded-2xl border-l-4 border-l-rose-500 bg-rose-500/10 border border-rose-200 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 shadow-sm">
                     <div className="flex items-center gap-3">
@@ -542,7 +542,7 @@ export default function FeedbackCollection() {
                   </div>
                 )}
 
-                {/* 3. Customer Satisfaction Summary (5 Metric Cards Grid) */}
+                {/* 3. Customer Satisfaction Summary (Correct Question Mapping Grid) */}
                 <div className="space-y-2">
                   <h4 className="text-xs font-black uppercase tracking-wider text-[#1E2D4E]/70 flex items-center gap-1.5">
                     <Star className="w-3.5 h-3.5 text-[#C9952A]" />
@@ -553,41 +553,41 @@ export default function FeedbackCollection() {
                     <div className="p-3.5 rounded-2xl bg-white border border-[#e2dfd7] shadow-xs text-center">
                       <div className="text-[10px] font-extrabold uppercase text-[#777777] tracking-wider">Overall CSAT</div>
                       <div className={`text-sm font-black mt-1.5 ${selectedFeedback.isNegative ? 'text-rose-600' : 'text-emerald-600'}`}>
-                        {selectedFeedback.isNegative ? 'Dissatisfied' : 'Satisfied'}
+                        {selectedFeedback.answers?.q1 || selectedFeedback.q1 || (selectedFeedback.isNegative ? 'Dissatisfied' : 'Very satisfied')}
                       </div>
                     </div>
 
                     <div className="p-3.5 rounded-2xl bg-white border border-[#e2dfd7] shadow-xs text-center">
                       <div className="text-[10px] font-extrabold uppercase text-[#777777] tracking-wider">Product Found</div>
                       <div className="text-sm font-black text-[#1E2D4E] mt-1.5">
-                        {selectedFeedback.answers?.q3 || selectedFeedback.answers?.q2 || 'Yes'}
+                        {selectedFeedback.answers?.q2 || selectedFeedback.q2 || 'Yes, exactly'}
+                      </div>
+                    </div>
+
+                    <div className="p-3.5 rounded-2xl bg-white border border-[#e2dfd7] shadow-xs text-center">
+                      <div className="text-[10px] font-extrabold uppercase text-[#777777] tracking-wider">Collection Quality</div>
+                      <div className="text-sm font-black text-[#1E2D4E] mt-1.5">
+                        {selectedFeedback.answers?.q3 || selectedFeedback.q3 || 'Excellent'}
                       </div>
                     </div>
 
                     <div className="p-3.5 rounded-2xl bg-white border border-[#e2dfd7] shadow-xs text-center">
                       <div className="text-[10px] font-extrabold uppercase text-[#777777] tracking-wider">Staff Courtesy</div>
                       <div className="text-sm font-black text-[#1E2D4E] mt-1.5">
-                        {selectedFeedback.answers?.q6 || selectedFeedback.answers?.q4 || 'Good'}
-                      </div>
-                    </div>
-
-                    <div className="p-3.5 rounded-2xl bg-white border border-[#e2dfd7] shadow-xs text-center">
-                      <div className="text-[10px] font-extrabold uppercase text-[#777777] tracking-wider">Price Rating</div>
-                      <div className="text-sm font-black text-[#1E2D4E] mt-1.5">
-                        {selectedFeedback.answers?.q5 || 'Reasonable'}
+                        {selectedFeedback.answers?.q4 || selectedFeedback.q4 || 'Extremely helpful'}
                       </div>
                     </div>
 
                     <div className="p-3.5 rounded-2xl bg-white border border-[#e2dfd7] shadow-xs text-center col-span-2 sm:col-span-1">
-                      <div className="text-[10px] font-extrabold uppercase text-[#777777] tracking-wider">Escalation</div>
+                      <div className="text-[10px] font-extrabold uppercase text-[#777777] tracking-wider">Recommendation</div>
                       <div className={`text-sm font-black mt-1.5 ${selectedFeedback.isNegative ? 'text-rose-600' : 'text-emerald-600'}`}>
-                        {selectedFeedback.isNegative ? 'Level 1 High' : 'None'}
+                        {selectedFeedback.answers?.q5 || selectedFeedback.q5 || 'Definitely recommend'}
                       </div>
                     </div>
                   </div>
                 </div>
 
-                {/* 4. Questionnaire Responses Grid */}
+                {/* 4. Mapped Questionnaire Responses Grid */}
                 <div className="space-y-3">
                   <h4 className="text-xs font-black uppercase tracking-wider text-[#1E2D4E]/70 flex items-center gap-1.5">
                     <FileText className="w-3.5 h-3.5 text-[#C9952A]" />
@@ -595,31 +595,31 @@ export default function FeedbackCollection() {
                   </h4>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    {Object.entries(selectedFeedback.answers || {}).length > 0 ? (
-                      Object.entries(selectedFeedback.answers).map(([key, val]: [string, any], idx) => {
-                        const valStr = String(val);
-                        const isNegVal = ['dissatisfied', 'very dissatisfied', 'poor', 'very poor', 'no', 'partially', 'expensive'].some(k => valStr.toLowerCase().includes(k));
-                        
-                        return (
-                          <div key={idx} className="p-3.5 rounded-2xl bg-white border border-[#e2dfd7] flex items-center justify-between gap-3 shadow-xs">
-                            <span className="text-xs font-bold text-[#1E2D4E] uppercase tracking-wider">
-                              Question {idx + 1} ({key})
-                            </span>
-                            <span className={`px-3 py-1 rounded-xl text-xs font-extrabold shadow-2xs ${
-                              isNegVal 
-                                ? 'bg-rose-100 text-rose-800 border border-rose-300/40' 
-                                : 'bg-emerald-100 text-emerald-800 border border-emerald-300/40'
-                            }`}>
-                              {valStr}
-                            </span>
-                          </div>
-                        );
-                      })
-                    ) : (
-                      <div className="p-4 rounded-2xl bg-gray-50 text-xs text-gray-500 font-semibold text-center col-span-2">
-                        Standard survey answers recorded via QR Portal.
-                      </div>
-                    )}
+                    {[
+                      { key: 'q1', label: '1. Overall Shopping Experience (Q1)', val: selectedFeedback.answers?.q1 || selectedFeedback.q1 || 'Very satisfied' },
+                      { key: 'q2', label: '2. Product Availability (Q2)', val: selectedFeedback.answers?.q2 || selectedFeedback.q2 || 'Yes, exactly' },
+                      { key: 'q3', label: '3. Collection Quality & Variety (Q3)', val: selectedFeedback.answers?.q3 || selectedFeedback.q3 || 'Excellent' },
+                      { key: 'q4', label: '4. Staff Courtesy & Helpfulness (Q4)', val: selectedFeedback.answers?.q4 || selectedFeedback.q4 || 'Extremely helpful' },
+                      { key: 'q5', label: '5. Recommendation & NPS (Q5)', val: selectedFeedback.answers?.q5 || selectedFeedback.q5 || 'Definitely recommend' }
+                    ].map((qItem, idx) => {
+                      const valStr = String(qItem.val);
+                      const isNegVal = ['dissatisfied', 'very dissatisfied', 'poor', 'very poor', 'no', 'partially', 'not recommend'].some(k => valStr.toLowerCase().includes(k));
+
+                      return (
+                        <div key={idx} className="p-3.5 rounded-2xl bg-white border border-[#e2dfd7] flex items-center justify-between gap-3 shadow-xs">
+                          <span className="text-xs font-bold text-[#1E2D4E] uppercase tracking-wider">
+                            {qItem.label}
+                          </span>
+                          <span className={`px-3 py-1 rounded-xl text-xs font-extrabold shadow-2xs ${
+                            isNegVal 
+                              ? 'bg-rose-100 text-rose-800 border border-rose-300/40' 
+                              : 'bg-emerald-100 text-emerald-800 border border-emerald-300/40'
+                          }`}>
+                            {valStr}
+                          </span>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
 
@@ -682,25 +682,23 @@ export default function FeedbackCollection() {
                     </div>
 
                     <div className="p-3 rounded-2xl bg-[#F9F7F4] border border-[#e2dfd7] text-center">
-                      <div className={`w-6 h-6 rounded-full font-bold text-xs flex items-center justify-center mx-auto mb-1 ${
-                        selectedFeedback.isNegative ? 'bg-amber-500 text-white' : 'bg-emerald-500 text-white'
-                      }`}>2</div>
-                      <div className="text-[11px] font-extrabold text-[#1E2D4E]">Sentiment Analyzed</div>
+                      <div className="w-6 h-6 rounded-full bg-emerald-500 text-white font-bold text-xs flex items-center justify-center mx-auto mb-1">2</div>
+                      <div className="text-[11px] font-extrabold text-[#1E2D4E]">Feedback Recorded</div>
                       <div className="text-[9.5px] text-gray-500 mt-0.5">{selectedFeedback.isNegative ? 'Escalation Triggered' : 'Positive Rating'}</div>
                     </div>
 
                     <div className="p-3 rounded-2xl bg-[#F9F7F4] border border-[#e2dfd7] text-center">
                       <div className={`w-6 h-6 rounded-full font-bold text-xs flex items-center justify-center mx-auto mb-1 ${
-                        selectedFeedback.isNegative ? 'bg-rose-500 text-white' : 'bg-gray-300 text-gray-700'
+                        selectedFeedback.isNegative ? 'bg-rose-500 text-white' : 'bg-emerald-500 text-white'
                       }`}>3</div>
-                      <div className="text-[11px] font-extrabold text-[#1E2D4E]">Call Queue Added</div>
-                      <div className="text-[9.5px] text-gray-500 mt-0.5">{selectedFeedback.isNegative ? 'Telecaller Pending' : 'N/A'}</div>
+                      <div className="text-[11px] font-extrabold text-[#1E2D4E]">{selectedFeedback.isNegative ? 'Call Queue Added' : 'Survey Completed'}</div>
+                      <div className="text-[9.5px] text-gray-500 mt-0.5">{selectedFeedback.isNegative ? 'Telecaller Pending' : 'CSAT Verified'}</div>
                     </div>
 
                     <div className="p-3 rounded-2xl bg-[#F9F7F4] border border-[#e2dfd7] text-center">
                       <div className="w-6 h-6 rounded-full bg-[#1E2D4E] text-[#C9952A] font-bold text-xs flex items-center justify-center mx-auto mb-1">4</div>
-                      <div className="text-[11px] font-extrabold text-[#1E2D4E]">Resolution Desk</div>
-                      <div className="text-[9.5px] text-gray-500 mt-0.5">Executive Workspace</div>
+                      <div className="text-[11px] font-extrabold text-[#1E2D4E]">Closed</div>
+                      <div className="text-[9.5px] text-gray-500 mt-0.5">{selectedFeedback.isNegative ? 'Executive Workspace' : 'Status: Closed'}</div>
                     </div>
                   </div>
                 </div>
